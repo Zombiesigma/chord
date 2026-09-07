@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
 import type { Song } from "@/types/song";
 
 /* =========================================================
@@ -25,7 +31,7 @@ type ParsedLine =
     };
 
 /* =========================================================
-   CHORD TRANSPOSITION
+   CHORD UTILITIES
 ========================================================= */
 
 const SHARP_KEYS = [
@@ -43,7 +49,10 @@ const SHARP_KEYS = [
   "B",
 ];
 
-const FLAT_TO_SHARP: Record<string, string> = {
+const FLAT_TO_SHARP: Record<
+  string,
+  string
+> = {
   Db: "C#",
   Eb: "D#",
   Gb: "F#",
@@ -51,75 +60,283 @@ const FLAT_TO_SHARP: Record<string, string> = {
   Bb: "A#",
 };
 
-function normalizeChordRoot(root: string) {
-  return FLAT_TO_SHARP[root] || root;
+/*
+ * Nama section yang TIDAK BOLEH dianggap chord.
+ *
+ * Penting karena:
+ *
+ * [Chorus]
+ *
+ * diawali huruf C, sehingga parser chord
+ * sederhana bisa salah menganggapnya sebagai
+ * chord "Chorus".
+ */
+
+const SECTION_NAMES = new Set([
+  "intro",
+  "verse",
+  "verse 1",
+  "verse 2",
+  "verse 3",
+  "verse 4",
+  "pre-chorus",
+  "pre chorus",
+  "chorus",
+  "chorus 1",
+  "chorus 2",
+  "bridge",
+  "music",
+  "instrumental",
+  "solo",
+  "outro",
+  "interlude",
+]);
+
+function isSectionName(
+  value: string
+) {
+  return SECTION_NAMES.has(
+    value
+      .trim()
+      .toLowerCase()
+  );
 }
 
-function transposeChord(
-  chord: string,
-  amount: number
-): string {
-  if (!amount) {
-    return chord;
+/*
+ * Mengecek apakah isi [...] benar-benar
+ * sebuah chord.
+ *
+ * Contoh valid:
+ *
+ * G
+ * Gm
+ * G7
+ * Gmaj7
+ * C#m
+ * F#m7
+ * Asus4
+ * Cadd9
+ * G/B
+ * D/F#
+ *
+ * Contoh invalid:
+ *
+ * Chorus
+ * Intro
+ * Verse 1
+ */
+
+function isValidChord(
+  value: string
+) {
+  const chord =
+    value.trim();
+
+  if (!chord) {
+    return false;
+  }
+
+  if (
+    isSectionName(chord)
+  ) {
+    return false;
   }
 
   /*
-   * Contoh:
+   * Root + optional suffix.
    *
-   * G
-   * Cmaj7
-   * F#m
-   * Bb
-   * G/B
-   * C#m7
+   * Kita sengaja cukup fleksibel supaya
+   * chord custom dari database tetap bisa
+   * ditampilkan.
    */
 
-  const match = chord.match(
-    /^([A-G](?:#|b)?)(.*)$/
+  return /^
+    [A-G]
+    (?:#|b)?
+    (?:
+      m|min|maj|sus|add|dim|aug|no
+    )?
+    \d*
+    (?:
+      [+\-]
+    )?
+    (?:
+      [/#]
+      [A-G]
+      (?:#|b)?
+    )?
+    $
+  /x.test(
+    chord
   );
+}
 
-  if (!match) {
-    return chord;
+/*
+ * JavaScript tidak mendukung /x regex flag.
+ * Jadi versi runtime-nya dibuat di bawah.
+ */
+
+function isChord(value: string) {
+  const chord =
+    value.trim();
+
+  if (!chord) {
+    return false;
   }
 
-  const [, rawRoot, suffix] = match;
+  if (
+    isSectionName(chord)
+  ) {
+    return false;
+  }
 
-  const normalizedRoot =
-    normalizeChordRoot(rawRoot);
+  return /^[A-G](?:#|b)?(?:(?:m|min|maj|sus|add|dim|aug|no)\d*(?:[+\-])?(?:\/[A-G](?:#|b)?)?)?$/.test(
+    chord
+  );
+}
+
+/* =========================================================
+   NOTE NORMALIZATION
+========================================================= */
+
+function normalizeRoot(
+  root: string
+) {
+  return (
+    FLAT_TO_SHARP[root] ||
+    root
+  );
+}
+
+/* =========================================================
+   TRANSPOSE SINGLE NOTE
+========================================================= */
+
+function transposeNote(
+  note: string,
+  amount: number
+) {
+  const normalized =
+    normalizeRoot(note);
 
   const index =
-    SHARP_KEYS.indexOf(normalizedRoot);
+    SHARP_KEYS.indexOf(
+      normalized
+    );
 
   if (index === -1) {
-    return chord;
+    return note;
   }
 
   const newIndex =
     (index + amount + 120) %
     12;
 
+  return SHARP_KEYS[
+    newIndex
+  ];
+}
+
+/* =========================================================
+   TRANSPOSE CHORD
+========================================================= */
+
+function transposeChord(
+  chord: string,
+  amount: number
+) {
+  if (!amount) {
+    return chord;
+  }
+
+  const match =
+    chord.match(
+      /^([A-G](?:#|b)?)(.*)$/
+    );
+
+  if (!match) {
+    return chord;
+  }
+
+  const root =
+    match[1];
+
+  const suffix =
+    match[2];
+
+  /*
+   * Handle slash chord.
+   *
+   * G/B
+   *
+   * menjadi:
+   *
+   * A/C#
+   */
+
+  const slashMatch =
+    suffix.match(
+      /^(.*)\/([A-G](?:#|b)?)$/
+    );
+
+  if (slashMatch) {
+    const chordSuffix =
+      slashMatch[1];
+
+    const bass =
+      slashMatch[2];
+
+    return (
+      transposeNote(
+        root,
+        amount
+      ) +
+      chordSuffix +
+      "/" +
+      transposeNote(
+        bass,
+        amount
+      )
+    );
+  }
+
   return (
-    SHARP_KEYS[newIndex] + suffix
+    transposeNote(
+      root,
+      amount
+    ) + suffix
   );
 }
 
 /* =========================================================
-   TRANSPOSE WHOLE LYRIC TEXT
+   TRANSPOSE FULL LYRIC STRING
 ========================================================= */
 
 function transposeLyrics(
   text: string,
   amount: number
-): string {
+) {
   if (!amount) {
     return text;
   }
 
   return text.replace(
-    /\[([A-G](?:#|b)?[^ \]\r\n]*)\]/g,
-    (_full, chord: string) => {
+    /\[([^\]]+)\]/g,
+    (
+      full,
+      content: string
+    ) => {
+      const value =
+        content.trim();
+
+      if (
+        !isChord(value)
+      ) {
+        return full;
+      }
+
       return `[${transposeChord(
-        chord,
+        value,
         amount
       )}]`;
     }
@@ -130,8 +347,8 @@ function transposeLyrics(
    PARSER
 ========================================================= */
 
-/**
- * Firebase menyimpan format seperti:
+/*
+ * Input Firebase:
  *
  * [Intro]
  *
@@ -141,27 +358,53 @@ function transposeLyrics(
  *
  * [G]I wanna be your[C] day
  *
- * Parser ini menghasilkan:
+ * Output:
  *
- * lyrics:
- * I wanna be your day
- *
- * chords:
- * G -> position 0
- * C -> position 15
+ * section
+ * line
+ * progression
+ * etc.
  */
+
 function parseChordLyrics(
   text: string
 ): ParsedLine[] {
-  const lines = text.replace(
-    /\r\n/g,
-    "\n"
-  ).split("\n");
+  const lines =
+    text
+      .replace(
+        /\r\n/g,
+        "\n"
+      )
+      .replace(
+        /\r/g,
+        "\n"
+      )
+      .split("\n");
 
-  const result: ParsedLine[] = [];
+  const result: ParsedLine[] =
+    [];
 
-  for (const rawLine of lines) {
-    const line = rawLine.trimEnd();
+  for (
+    const rawLine of lines
+  ) {
+    const line =
+      rawLine;
+
+    /*
+     * Empty line.
+     */
+
+    if (
+      line.trim() === ""
+    ) {
+      result.push({
+        type: "line",
+        lyrics: "",
+        chords: [],
+      });
+
+      continue;
+    }
 
     /*
      * Section:
@@ -176,10 +419,20 @@ function parseChordLyrics(
         /^\s*\[([^\]]+)\]\s*$/
       );
 
-    if (sectionMatch) {
+    if (
+      sectionMatch
+    ) {
+      const title =
+        sectionMatch[1].trim();
+
+      /*
+       * Semua standalone [....]
+       * dianggap section.
+       */
+
       result.push({
         type: "section",
-        title: sectionMatch[1],
+        title,
       });
 
       continue;
@@ -187,57 +440,48 @@ function parseChordLyrics(
 
     let lyrics = "";
 
-    const chords: ChordPosition[] = [];
+    const chords: ChordPosition[] =
+      [];
 
-    /*
-     * Kita membaca karakter demi karakter.
-     *
-     * Ini penting supaya posisi chord dihitung
-     * berdasarkan panjang LIRIK yang sudah terbentuk,
-     * bukan panjang string mentah yang masih memiliki
-     * [G], [C], dll.
-     */
+    let index = 0;
 
-    let i = 0;
-
-    while (i < line.length) {
+    while (
+      index < line.length
+    ) {
       /*
-       * Chord marker:
-       *
-       * [G]
-       * [C]
-       * [F#m7]
-       * [G/B]
+       * Cari bracket.
        */
 
-      if (line[i] === "[") {
+      if (
+        line[index] === "["
+      ) {
         const close =
-          line.indexOf("]", i + 1);
+          line.indexOf(
+            "]",
+            index + 1
+          );
 
-        if (close !== -1) {
-          const inside =
+        if (
+          close !== -1
+        ) {
+          const content =
             line.slice(
-              i + 1,
+              index + 1,
               close
             );
 
-          /*
-           * Pastikan isi bracket memang
-           * terlihat seperti chord.
-           */
-
-          const chordMatch =
-            inside.match(
-              /^([A-G](?:#|b)?)(.*)$/
-            );
-
-          if (chordMatch) {
+          if (
+            isChord(content)
+          ) {
             chords.push({
-              chord: inside,
-              position: lyrics.length,
+              chord:
+                content.trim(),
+              position:
+                lyrics.length,
             });
 
-            i = close + 1;
+            index =
+              close + 1;
 
             continue;
           }
@@ -245,13 +489,20 @@ function parseChordLyrics(
       }
 
       /*
-       * Karakter biasa masuk ke lyrics.
+       * Karakter biasa.
        */
 
-      lyrics += line[i];
+      lyrics +=
+        line[index];
 
-      i++;
+      index++;
     }
+
+    /*
+     * Jika ternyata tidak ada chord
+     * dan isinya adalah section-like marker,
+     * tetap aman.
+     */
 
     result.push({
       type: "line",
@@ -264,22 +515,6 @@ function parseChordLyrics(
 }
 
 /* =========================================================
-   SECTION DETECTION
-========================================================= */
-
-function isChordOnlyLine(
-  line: Extract<
-    ParsedLine,
-    { type: "line" }
-  >
-) {
-  return (
-    line.lyrics.trim() === "" &&
-    line.chords.length > 0
-  );
-}
-
-/* =========================================================
    CHORD PROGRESSION
 ========================================================= */
 
@@ -288,35 +523,44 @@ function ChordProgression({
 }: {
   chords: ChordPosition[];
 }) {
+  if (!chords.length) {
+    return null;
+  }
+
   return (
     <div
       className="
-        my-4
         flex
+        max-w-full
         flex-wrap
         gap-2
       "
     >
       {chords.map(
-        (item, index) => (
+        (
+          item,
+          index
+        ) => (
           <span
             key={`${item.chord}-${index}`}
             className="
               flex
               h-11
               min-w-11
+              shrink-0
               items-center
               justify-center
               rounded-xl
               border
-              border-amber-400/20
+              border-amber-400/15
               bg-amber-400/[0.055]
               px-3
               font-mono
               text-sm
               font-bold
               text-amber-400
-              shadow-[0_0_25px_rgba(251,191,36,0.04)]
+              transition
+              duration-200
             "
           >
             {item.chord}
@@ -328,8 +572,23 @@ function ChordProgression({
 }
 
 /* =========================================================
-   CHORD + LYRIC LINE
+   RESPONSIVE CHORD + LYRIC LINE
 ========================================================= */
+
+/*
+ * Ini bagian terpenting.
+ *
+ * Kita TIDAK memakai:
+ *
+ * w-max
+ * min-width panjang
+ * overflow-x-auto
+ *
+ * karena itu menyebabkan horizontal scrolling.
+ *
+ * Sebaliknya setiap chord + potongan lirik
+ * menjadi sebuah segment yang bisa wrap.
+ */
 
 function ChordLyricLine({
   chords,
@@ -338,73 +597,18 @@ function ChordLyricLine({
   chords: ChordPosition[];
   lyrics: string;
 }) {
-  const maxChordEnd =
-    chords.length > 0
-      ? Math.max(
-          ...chords.map(
-            (item) =>
-              item.position +
-              item.chord.length
-          )
-        )
-      : 0;
+  /*
+   * Tidak ada chord.
+   */
 
-  const width =
-    Math.max(
-      lyrics.length,
-      maxChordEnd,
-      1
-    );
-
-  return (
-    <div
-      className="
-        relative
-        w-max
-        min-w-full
-        font-mono
-      "
-      style={{
-        minWidth: `${width}ch`,
-      }}
-    >
-      {/* CHORDS */}
-
+  if (!chords.length) {
+    return (
       <div
         className="
-          relative
-          h-[1.45em]
-        "
-      >
-        {chords.map(
-          (item, index) => (
-            <span
-              key={`${item.chord}-${index}`}
-              className="
-                absolute
-                top-0
-                whitespace-nowrap
-                font-mono
-                text-[0.78em]
-                font-bold
-                leading-[1.45]
-                text-amber-400
-              "
-              style={{
-                left: `${item.position}ch`,
-              }}
-            >
-              {item.chord}
-            </span>
-          )
-        )}
-      </div>
-
-      {/* LYRICS */}
-
-      <div
-        className="
-          whitespace-pre
+          w-full
+          min-w-0
+          whitespace-pre-wrap
+          break-words
           font-mono
           leading-[1.8]
           tracking-normal
@@ -412,6 +616,155 @@ function ChordLyricLine({
         "
       >
         {lyrics || "\u00A0"}
+      </div>
+    );
+  }
+
+  /*
+   * Pastikan chord tersusun berdasarkan
+   * posisi aslinya.
+   */
+
+  const sortedChords =
+    [...chords].sort(
+      (a, b) =>
+        a.position -
+        b.position
+    );
+
+  type Segment = {
+    chord: string;
+    text: string;
+  };
+
+  const segments: Segment[] =
+    [];
+
+  /*
+   * Text sebelum chord pertama.
+   */
+
+  const first =
+    sortedChords[0];
+
+  if (
+    first.position > 0
+  ) {
+    segments.push({
+      chord: "",
+      text: lyrics.slice(
+        0,
+        first.position
+      ),
+    });
+  }
+
+  /*
+   * Setiap chord menjadi segment.
+   */
+
+  for (
+    let i = 0;
+    i <
+    sortedChords.length;
+    i++
+  ) {
+    const current =
+      sortedChords[i];
+
+    const next =
+      sortedChords[i + 1];
+
+    const start =
+      Math.max(
+        0,
+        current.position
+      );
+
+    const end =
+      next
+        ? Math.max(
+            start,
+            next.position
+          )
+        : lyrics.length;
+
+    segments.push({
+      chord:
+        current.chord,
+      text: lyrics.slice(
+        start,
+        end
+      ),
+    });
+  }
+
+  return (
+    <div
+      className="
+        w-full
+        min-w-0
+        font-mono
+        leading-[1.8]
+      "
+    >
+      <div
+        className="
+          flex
+          w-full
+          min-w-0
+          flex-wrap
+          items-end
+        "
+      >
+        {segments.map(
+          (
+            segment,
+            index
+          ) => (
+            <span
+              key={`${segment.chord}-${index}`}
+              className="
+                inline-flex
+                min-w-0
+                max-w-full
+                flex-col
+                align-bottom
+              "
+            >
+              {segment.chord && (
+                <span
+                  className="
+                    mb-0.5
+                    whitespace-nowrap
+                    font-mono
+                    text-[0.78em]
+                    font-bold
+                    leading-[1.3]
+                    text-amber-400
+                  "
+                >
+                  {
+                    segment.chord
+                  }
+                </span>
+              )}
+
+              <span
+                className="
+                  min-w-0
+                  max-w-full
+                  whitespace-pre-wrap
+                  break-words
+                  text-zinc-200
+                "
+              >
+                {segment.text ||
+                  "\u00A0"}
+              </span>
+            </span>
+          )
+        )}
       </div>
     </div>
   );
@@ -427,22 +780,30 @@ function SectionHeader({
   title: string;
 }) {
   return (
-    <div className="mb-5 mt-10 first:mt-0">
+    <div
+      className="
+        mb-6
+        mt-11
+        first:mt-0
+      "
+    >
       <span
         className="
           inline-flex
+          items-center
           rounded-xl
           border
           border-amber-400/15
-          bg-amber-400/[0.06]
-          px-3.5
-          py-2
+          bg-amber-400/[0.055]
+          px-4
+          py-2.5
           font-mono
           text-xs
           font-bold
           uppercase
           tracking-[0.12em]
           text-amber-400
+          shadow-[0_0_30px_rgba(251,191,36,0.03)]
         "
       >
         {title}
@@ -473,40 +834,58 @@ function ChordList({
         border-zinc-800
         bg-zinc-900/40
         p-5
+        shadow-[0_20px_70px_rgba(0,0,0,0.15)]
         sm:p-6
       "
     >
       <div className="mb-4">
         <p
           className="
-            text-[11px]
+            text-[10px]
             font-bold
             uppercase
-            tracking-[0.28em]
+            tracking-[0.3em]
             text-zinc-500
           "
         >
           Chords
         </p>
 
-        <p className="mt-1 text-xs text-zinc-600">
+        <p
+          className="
+            mt-1
+            text-xs
+            text-zinc-600
+          "
+        >
           {chords.length} chord
-          {chords.length !== 1
+          {chords.length !==
+          1
             ? "s"
             : ""}
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div
+        className="
+          flex
+          max-w-full
+          flex-wrap
+          gap-2
+        "
+      >
         {chords.map(
-          (chord, index) => (
+          (
+            chord,
+            index
+          ) => (
             <span
               key={`${chord}-${index}`}
               className="
                 rounded-xl
                 border
                 border-amber-400/10
-                bg-zinc-950
+                bg-[#050505]
                 px-3.5
                 py-2
                 font-mono
@@ -525,7 +904,7 @@ function ChordList({
 }
 
 /* =========================================================
-   MAIN COMPONENT
+   MAIN SONG VIEWER
 ========================================================= */
 
 export default function SongViewer({
@@ -534,8 +913,8 @@ export default function SongViewer({
   song: Song;
 }) {
   /* =======================================================
-     STATES
-  ======================================================= */
+     STATE
+  ====================================================== */
 
   const [shift, setShift] =
     useState(0);
@@ -546,16 +925,6 @@ export default function SongViewer({
   const [autoScroll, setAutoScroll] =
     useState(false);
 
-  /*
-   * Speed:
-   *
-   * 1 = lambat
-   * 2 = normal
-   * 3 = cepat
-   * 4 = sangat cepat
-   * 5 = ekstrem
-   */
-
   const [scrollSpeed, setScrollSpeed] =
     useState(2);
 
@@ -565,66 +934,79 @@ export default function SongViewer({
     );
 
   const animationRef =
-    useRef<number | null>(null);
+    useRef<number | null>(
+      null
+    );
 
   /* =======================================================
-     RAW FIREBASE DATA
-  ======================================================= */
+     SOURCE DATA
+  ====================================================== */
 
   const rawLyrics =
-    song.lyricsWithChords || "";
+    song.lyricsWithChords ||
+    "";
 
   /* =======================================================
-     TRANSPOSE
-  ======================================================= */
+     TRANSPOSED LYRICS
+  ====================================================== */
 
   const transposedLyrics =
-    useMemo(() => {
-      return transposeLyrics(
+    useMemo(
+      () =>
+        transposeLyrics(
+          rawLyrics,
+          shift
+        ),
+      [
         rawLyrics,
-        shift
-      );
-    }, [
-      rawLyrics,
-      shift,
-    ]);
+        shift,
+      ]
+    );
 
   /* =======================================================
-     PARSE
-  ======================================================= */
+     PARSED LYRICS
+  ====================================================== */
 
   const parsedLines =
-    useMemo(() => {
-      return parseChordLyrics(
-        transposedLyrics
-      );
-    }, [
-      transposedLyrics,
-    ]);
+    useMemo(
+      () =>
+        parseChordLyrics(
+          transposedLyrics
+        ),
+      [
+        transposedLyrics,
+      ]
+    );
 
   /* =======================================================
-     CHORD LIST
-  ======================================================= */
+     DETECT CHORDS FROM LYRICS
+  ====================================================== */
 
   const detectedChords =
     useMemo(() => {
-      const result: string[] = [];
+      const result: string[] =
+        [];
 
-      for (const line of parsedLines) {
+      for (
+        const line of parsedLines
+      ) {
         if (
-          line.type !== "line"
+          line.type !==
+          "line"
         ) {
           continue;
         }
 
-        for (const item of line.chords) {
+        for (
+          const chord of line.chords
+        ) {
           if (
             !result.includes(
-              item.chord
+              chord.chord
             )
           ) {
             result.push(
-              item.chord
+              chord.chord
             );
           }
         }
@@ -633,64 +1015,57 @@ export default function SongViewer({
       return result;
     }, [parsedLines]);
 
-  /*
-   * uniqueChords Firebase.
-   *
-   * Kita gabungkan dengan hasil parser
-   * supaya tidak ada chord yang hilang.
-   */
+  /* =======================================================
+     DISPLAYED CHORD LIST
+  ====================================================== */
 
   const displayedChords =
     useMemo(() => {
-      const result: string[] = [];
+      const result: string[] =
+        [];
 
-      for (const chord of [
-        ...(song.uniqueChords || []),
-        ...detectedChords,
-      ]) {
+      const firebaseChords =
+        Array.isArray(
+          song.uniqueChords
+        )
+          ? song.uniqueChords
+          : [];
+
+      for (
+        const chord of [
+          ...firebaseChords,
+          ...detectedChords,
+        ]
+      ) {
         const value =
-          chord.trim();
+          String(
+            chord ?? ""
+          ).trim();
 
         if (!value) {
           continue;
         }
 
         /*
-         * Jangan tampilkan nama section
-         * sebagai chord.
+         * Section names tidak boleh
+         * masuk daftar chord.
          */
 
-        const lower =
-          value.toLowerCase();
-
         if (
-          lower === "intro" ||
-          lower === "verse" ||
-          lower.startsWith(
-            "verse "
-          ) ||
-          lower === "chorus" ||
-          lower.startsWith(
-            "chorus "
-          ) ||
-          lower === "pre-chorus" ||
-          lower === "pre chorus" ||
-          lower === "bridge" ||
-          lower.startsWith(
-            "bridge "
-          ) ||
-          lower === "music" ||
-          lower === "solo" ||
-          lower === "outro"
+          isSectionName(value)
         ) {
           continue;
         }
 
         /*
-         * Jika transpose aktif,
-         * chord dari Firebase juga
-         * harus mengikuti key baru.
+         * Pastikan hanya chord valid.
          */
+
+        if (
+          !isChord(value)
+        ) {
+          continue;
+        }
 
         const finalChord =
           shift !== 0
@@ -719,8 +1094,20 @@ export default function SongViewer({
     ]);
 
   /* =======================================================
+     TRANSPOSE LABEL
+  ====================================================== */
+
+  const displayedKey =
+    song.originalKey
+      ? transposeChord(
+          song.originalKey,
+          shift
+        )
+      : null;
+
+  /* =======================================================
      AUTO SCROLL
-  ======================================================= */
+  ====================================================== */
 
   useEffect(() => {
     if (!autoScroll) {
@@ -746,11 +1133,8 @@ export default function SongViewer({
       return;
     }
 
-    let lastTime = performance.now();
-
-    /*
-     * Kecepatan dalam pixel / detik.
-     */
+    let lastTime =
+      performance.now();
 
     const speedMap: Record<
       number,
@@ -766,7 +1150,7 @@ export default function SongViewer({
     const pixelsPerSecond =
       speedMap[
         scrollSpeed
-      ] || 16;
+      ] ?? 16;
 
     const tick = (
       currentTime: number
@@ -775,28 +1159,34 @@ export default function SongViewer({
         currentTime -
         lastTime;
 
-      lastTime = currentTime;
+      lastTime =
+        currentTime;
+
+      const maxScroll =
+        container.scrollHeight -
+        container.clientHeight;
 
       if (
-        container.scrollTop +
-          container.clientHeight <
-        container.scrollHeight -
-          2
+        container.scrollTop <
+        maxScroll - 1
       ) {
         container.scrollTop +=
           (pixelsPerSecond *
             delta) /
           1000;
+
+        animationRef.current =
+          requestAnimationFrame(
+            tick
+          );
       } else {
-        setAutoScroll(false);
-
-        return;
-      }
-
-      animationRef.current =
-        requestAnimationFrame(
-          tick
+        setAutoScroll(
+          false
         );
+
+        animationRef.current =
+          null;
+      }
     };
 
     animationRef.current =
@@ -824,9 +1214,13 @@ export default function SongViewer({
 
   /* =======================================================
      RESET SCROLL
-  ======================================================= */
+  ====================================================== */
 
   function resetScroll() {
+    setAutoScroll(
+      false
+    );
+
     const container =
       scrollContainerRef.current;
 
@@ -841,44 +1235,45 @@ export default function SongViewer({
   }
 
   /* =======================================================
-     FONT SIZE
-  ======================================================= */
+     FONT CONTROLS
+  ====================================================== */
 
   function decreaseFont() {
     setFontSize(
-      (value) =>
+      (current) =>
         Math.max(
           13,
-          value - 1
+          current - 1
         )
     );
   }
 
   function increaseFont() {
     setFontSize(
-      (value) =>
+      (current) =>
         Math.min(
-          26,
-          value + 1
+          28,
+          current + 1
         )
     );
   }
 
   /* =======================================================
      RENDER
-  ======================================================= */
+  ====================================================== */
 
   return (
     <main
       className="
         min-h-screen
+        overflow-x-hidden
         bg-[#050505]
         text-zinc-100
       "
     >
-      {/* ===================================================
-          TOP BAR
-      ==================================================== */}
+      {/* =================================================
+          TOP NAVIGATION
+      ================================================= */}
 
       <header
         className="
@@ -888,7 +1283,7 @@ export default function SongViewer({
           border-b
           border-zinc-800/80
           bg-[#050505]/90
-          backdrop-blur-xl
+          backdrop-blur-2xl
         "
       >
         <div
@@ -903,8 +1298,6 @@ export default function SongViewer({
             py-3
           "
         >
-          {/* BACK */}
-
           <Link
             href="/songs"
             className="
@@ -919,8 +1312,6 @@ export default function SongViewer({
             ← Songs
           </Link>
 
-          {/* CONTROLS */}
-
           <div
             className="
               flex
@@ -929,7 +1320,7 @@ export default function SongViewer({
               sm:gap-2
             "
           >
-            {/* MINUS */}
+            {/* TRANSPOSE DOWN */}
 
             <button
               type="button"
@@ -953,18 +1344,20 @@ export default function SongViewer({
                 text-zinc-300
                 transition
                 hover:border-zinc-600
+                hover:text-white
+                active:scale-95
               "
               aria-label="Transpose down"
             >
               −
             </button>
 
-            {/* SHIFT */}
+            {/* TRANSPOSE VALUE */}
 
             <span
               className="
                 flex
-                min-w-[30px]
+                min-w-[32px]
                 justify-center
                 font-mono
                 text-xs
@@ -977,7 +1370,7 @@ export default function SongViewer({
                 : shift}
             </span>
 
-            {/* PLUS */}
+            {/* TRANSPOSE UP */}
 
             <button
               type="button"
@@ -1001,13 +1394,15 @@ export default function SongViewer({
                 text-zinc-300
                 transition
                 hover:border-zinc-600
+                hover:text-white
+                active:scale-95
               "
               aria-label="Transpose up"
             >
               +
             </button>
 
-            {/* FONT DOWN */}
+            {/* FONT SMALL */}
 
             <button
               type="button"
@@ -1030,13 +1425,15 @@ export default function SongViewer({
                 text-zinc-300
                 transition
                 hover:border-zinc-600
+                hover:text-white
+                active:scale-95
               "
               aria-label="Decrease text size"
             >
               A−
             </button>
 
-            {/* FONT UP */}
+            {/* FONT LARGE */}
 
             <button
               type="button"
@@ -1059,6 +1456,8 @@ export default function SongViewer({
                 text-zinc-300
                 transition
                 hover:border-zinc-600
+                hover:text-white
+                active:scale-95
               "
               aria-label="Increase text size"
             >
@@ -1068,9 +1467,9 @@ export default function SongViewer({
         </div>
       </header>
 
-      {/* ===================================================
+      {/* =================================================
           SONG HEADER
-      ==================================================== */}
+      ================================================= */}
 
       <section
         className="
@@ -1098,7 +1497,7 @@ export default function SongViewer({
               overflow-hidden
               rounded-[26px]
               bg-zinc-900
-              shadow-[0_25px_80px_rgba(0,0,0,0.4)]
+              shadow-[0_30px_100px_rgba(0,0,0,0.45)]
             "
           >
             {song.coverImageUrl ? (
@@ -1107,7 +1506,7 @@ export default function SongViewer({
                 src={
                   song.coverImageUrl
                 }
-                alt={song.title}
+                alt={`${song.title} cover`}
                 className="
                   h-full
                   w-full
@@ -1123,7 +1522,7 @@ export default function SongViewer({
                   justify-center
                   text-xs
                   font-bold
-                  tracking-widest
+                  tracking-[0.2em]
                   text-zinc-700
                 "
               >
@@ -1132,9 +1531,9 @@ export default function SongViewer({
             )}
           </div>
 
-          {/* INFO */}
+          {/* INFORMATION */}
 
-          <div>
+          <div className="min-w-0">
             <p
               className="
                 text-xs
@@ -1151,9 +1550,10 @@ export default function SongViewer({
             <h1
               className="
                 mt-2
+                break-words
                 text-4xl
                 font-black
-                tracking-[-0.04em]
+                tracking-[-0.045em]
                 text-white
                 sm:text-6xl
               "
@@ -1179,11 +1579,12 @@ export default function SongViewer({
               className="
                 mt-5
                 flex
+                max-w-full
                 flex-wrap
                 gap-2
               "
             >
-              {song.originalKey && (
+              {displayedKey && (
                 <span
                   className="
                     rounded-full
@@ -1195,7 +1596,7 @@ export default function SongViewer({
                   "
                 >
                   Key{" "}
-                  {song.originalKey}
+                  {displayedKey}
                 </span>
               )}
 
@@ -1213,7 +1614,7 @@ export default function SongViewer({
                 {song.capo ?? 0}
               </span>
 
-              {song.bpm && (
+              {song.bpm ? (
                 <span
                   className="
                     rounded-full
@@ -1226,11 +1627,12 @@ export default function SongViewer({
                 >
                   {song.bpm} BPM
                 </span>
-              )}
+              ) : null}
 
-              {song.tuning && (
+              {song.tuning ? (
                 <span
                   className="
+                    max-w-full
                     rounded-full
                     bg-zinc-900
                     px-3
@@ -1241,10 +1643,10 @@ export default function SongViewer({
                 >
                   {song.tuning}
                 </span>
-              )}
+              ) : null}
             </div>
 
-            {/* LINKS */}
+            {/* EXTERNAL LINKS */}
 
             <div
               className="
@@ -1254,7 +1656,7 @@ export default function SongViewer({
                 gap-3
               "
             >
-              {song.youtubeUrl && (
+              {song.youtubeUrl ? (
                 <a
                   href={
                     song.youtubeUrl
@@ -1271,13 +1673,14 @@ export default function SongViewer({
                     text-black
                     transition
                     hover:bg-zinc-200
+                    active:scale-95
                   "
                 >
                   YouTube
                 </a>
-              )}
+              ) : null}
 
-              {song.spotifyTrackUrl && (
+              {song.spotifyTrackUrl ? (
                 <a
                   href={
                     song.spotifyTrackUrl
@@ -1296,19 +1699,20 @@ export default function SongViewer({
                     text-zinc-200
                     transition
                     hover:border-zinc-600
+                    active:scale-95
                   "
                 >
                   Spotify
                 </a>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
       </section>
 
-      {/* ===================================================
-          CHORDS
-      ==================================================== */}
+      {/* =================================================
+          CHORD SUMMARY
+      ================================================= */}
 
       <section
         className="
@@ -1325,9 +1729,9 @@ export default function SongViewer({
         />
       </section>
 
-      {/* ===================================================
-          AUTO SCROLL CONTROL
-      ==================================================== */}
+      {/* =================================================
+          AUTO SCROLL PANEL
+      ================================================= */}
 
       <section
         className="
@@ -1344,6 +1748,7 @@ export default function SongViewer({
             border-zinc-800
             bg-zinc-900/40
             p-4
+            shadow-[0_20px_70px_rgba(0,0,0,0.12)]
             sm:p-5
           "
         >
@@ -1357,28 +1762,32 @@ export default function SongViewer({
               sm:justify-between
             "
           >
-            {/* TITLE */}
-
             <div>
               <p
                 className="
-                  text-[11px]
+                  text-[10px]
                   font-bold
                   uppercase
-                  tracking-[0.28em]
+                  tracking-[0.3em]
                   text-zinc-500
                 "
               >
                 Auto Scroll
               </p>
 
-              <p className="mt-1 text-sm text-zinc-400">
-                Scroll otomatis untuk
-                bermain gitar
+              <p
+                className="
+                  mt-1
+                  text-sm
+                  text-zinc-400
+                "
+              >
+                Scroll otomatis
+                untuk bermain
+                tanpa menyentuh
+                layar.
               </p>
             </div>
-
-            {/* BUTTONS */}
 
             <div
               className="
@@ -1387,8 +1796,6 @@ export default function SongViewer({
                 gap-2
               "
             >
-              {/* PLAY / PAUSE */}
-
               <button
                 type="button"
                 onClick={() =>
@@ -1404,10 +1811,11 @@ export default function SongViewer({
                   text-sm
                   font-bold
                   transition
+                  active:scale-95
                   ${
                     autoScroll
                       ? "bg-amber-400 text-black"
-                      : "border border-zinc-700 bg-zinc-950 text-zinc-200"
+                      : "border border-zinc-700 bg-zinc-950 text-zinc-200 hover:border-zinc-500"
                   }
                 `}
               >
@@ -1415,8 +1823,6 @@ export default function SongViewer({
                   ? "Ⅱ Pause"
                   : "▶ Play"}
               </button>
-
-              {/* RESET */}
 
               <button
                 type="button"
@@ -1435,6 +1841,8 @@ export default function SongViewer({
                   text-zinc-300
                   transition
                   hover:border-zinc-600
+                  hover:text-white
+                  active:scale-95
                 "
               >
                 ↺ Reset
@@ -1453,12 +1861,22 @@ export default function SongViewer({
                 justify-between
               "
             >
-              <span className="text-xs text-zinc-500">
-                Speed
+              <span
+                className="
+                  text-xs
+                  font-medium
+                  text-zinc-500
+                "
+              >
+                Scroll speed
               </span>
 
               <span
                 className="
+                  rounded-md
+                  bg-amber-400/10
+                  px-2
+                  py-1
                   font-mono
                   text-xs
                   font-bold
@@ -1474,11 +1892,14 @@ export default function SongViewer({
               min="1"
               max="5"
               step="1"
-              value={scrollSpeed}
+              value={
+                scrollSpeed
+              }
               onChange={(event) =>
                 setScrollSpeed(
                   Number(
-                    event.target.value
+                    event.target
+                      .value
                   )
                 )
               }
@@ -1488,6 +1909,7 @@ export default function SongViewer({
                 cursor-pointer
                 accent-amber-400
               "
+              aria-label="Auto scroll speed"
             />
 
             <div
@@ -1495,9 +1917,10 @@ export default function SongViewer({
                 mt-2
                 flex
                 justify-between
-                text-[10px]
+                text-[9px]
+                font-bold
                 uppercase
-                tracking-wider
+                tracking-[0.15em]
                 text-zinc-700
               "
             >
@@ -1517,9 +1940,9 @@ export default function SongViewer({
         </div>
       </section>
 
-      {/* ===================================================
+      {/* =================================================
           CHORD SHEET
-      ==================================================== */}
+      ================================================= */}
 
       <section
         className="
@@ -1536,7 +1959,7 @@ export default function SongViewer({
             border
             border-zinc-800
             bg-[#070707]
-            shadow-[0_25px_100px_rgba(0,0,0,0.25)]
+            shadow-[0_30px_100px_rgba(0,0,0,0.3)]
           "
         >
           <div
@@ -1545,8 +1968,9 @@ export default function SongViewer({
             }
             className="
               max-h-[75vh]
+              overflow-x-hidden
               overflow-y-auto
-              overflow-x-auto
+              overscroll-contain
               px-5
               py-8
               sm:px-9
@@ -1554,6 +1978,10 @@ export default function SongViewer({
             "
           >
             <div
+              className="
+                w-full
+                min-w-0
+              "
               style={{
                 fontSize: `${fontSize}px`,
               }}
@@ -1563,9 +1991,9 @@ export default function SongViewer({
                   line,
                   index
                 ) => {
-                  /* =====================================
-                     SECTION
-                  ====================================== */
+                  /*
+                   * SECTION
+                   */
 
                   if (
                     line.type ===
@@ -1581,20 +2009,24 @@ export default function SongViewer({
                     );
                   }
 
-                  /* =====================================
-                     CHORD PROGRESSION
-                  ====================================== */
+                  /*
+                   * CHORD-ONLY LINE
+                   *
+                   * [G][C][G][C]
+                   */
 
                   if (
-                    isChordOnlyLine(
-                      line
-                    )
+                    line.lyrics.trim() ===
+                      "" &&
+                    line.chords
+                      .length > 0
                   ) {
                     return (
                       <div
                         key={`progression-${index}`}
                         className="
-                          mb-7
+                          mb-8
+                          max-w-full
                         "
                       >
                         <ChordProgression
@@ -1606,16 +2038,37 @@ export default function SongViewer({
                     );
                   }
 
-                  /* =====================================
-                     NORMAL LINE
-                  ====================================== */
+                  /*
+                   * EMPTY LINE
+                   */
+
+                  if (
+                    line.lyrics ===
+                      "" &&
+                    line.chords
+                      .length === 0
+                  ) {
+                    return (
+                      <div
+                        key={`empty-${index}`}
+                        className="
+                          h-5
+                        "
+                      />
+                    );
+                  }
+
+                  /*
+                   * NORMAL CHORD + LYRICS
+                   */
 
                   return (
                     <div
                       key={`line-${index}`}
                       className="
                         mb-4
-                        last:mb-0
+                        w-full
+                        min-w-0
                       "
                     >
                       <ChordLyricLine
@@ -1635,9 +2088,9 @@ export default function SongViewer({
         </div>
       </section>
 
-      {/* ===================================================
+      {/* =================================================
           FOOTER
-      ==================================================== */}
+      ================================================= */}
 
       <footer
         className="
