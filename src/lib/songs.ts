@@ -33,11 +33,11 @@ export async function getPublishedSongs(): Promise<Song[]> {
 export async function getSongBySlug(slug: string): Promise<Song | null> {
   const decodedSlug = decodeURIComponent(slug);
 
-  // Cari berdasarkan slug
+  // Cari lagu berdasarkan slug saja.
+  // Tidak perlu composite index slug + isPublished.
   const q = query(
     songsRef,
     where("slug", "==", decodedSlug),
-    where("isPublished", "==", true),
     limit(1)
   );
 
@@ -45,16 +45,24 @@ export async function getSongBySlug(slug: string): Promise<Song | null> {
 
   if (!snap.empty) {
     const d = snap.docs[0];
+    const data = d.data() as Omit<Song, "id">;
+
+    // Pastikan lagu memang published.
+    if (data.isPublished !== true) {
+      return null;
+    }
 
     return {
       id: d.id,
-      ...(d.data() as Omit<Song, "id">),
+      ...data,
     };
   }
 
   // Fallback:
-  // Kalau parameter URL ternyata merupakan document ID Firebase
-  const byId = await getDoc(doc(db, "songs", decodedSlug));
+  // Kalau parameter URL ternyata merupakan Firebase document ID.
+  const byId = await getDoc(
+    doc(db, "songs", decodedSlug)
+  );
 
   if (byId.exists()) {
     const data = byId.data() as Omit<Song, "id">;
@@ -71,7 +79,9 @@ export async function getSongBySlug(slug: string): Promise<Song | null> {
 }
 
 export async function getSongById(id: string): Promise<Song | null> {
-  const snap = await getDoc(doc(db, "songs", id));
+  const snap = await getDoc(
+    doc(db, "songs", id)
+  );
 
   if (!snap.exists()) {
     return null;
