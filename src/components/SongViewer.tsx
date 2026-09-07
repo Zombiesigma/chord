@@ -125,52 +125,6 @@ function isSectionName(
  * Intro
  * Verse 1
  */
-
-function isValidChord(
-  value: string
-) {
-  const chord =
-    value.trim();
-
-  if (!chord) {
-    return false;
-  }
-
-  if (
-    isSectionName(chord)
-  ) {
-    return false;
-  }
-
-  /*
-   * Root + optional suffix.
-   *
-   * Kita sengaja cukup fleksibel supaya
-   * chord custom dari database tetap bisa
-   * ditampilkan.
-   */
-
-  return /^
-    [A-G]
-    (?:#|b)?
-    (?:
-      m|min|maj|sus|add|dim|aug|no
-    )?
-    \d*
-    (?:
-      [+\-]
-    )?
-    (?:
-      [/#]
-      [A-G]
-      (?:#|b)?
-    )?
-    $
-  /x.test(
-    chord
-  );
-}
-
 /*
  * JavaScript tidak mendukung /x regex flag.
  * Jadi versi runtime-nya dibuat di bawah.
