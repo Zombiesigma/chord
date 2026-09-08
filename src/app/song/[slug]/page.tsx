@@ -4,11 +4,15 @@ import SongViewer from "@/components/SongViewer";
 
 export const dynamic = "force-dynamic";
 
+type SongPageProps = {
+  params: Promise<{
+    slug: string;
+  }>;
+};
+
 export default async function SongPage({
   params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+}: SongPageProps) {
   const { slug } = await params;
 
   const song = await getSongBySlug(slug);
@@ -17,5 +21,9 @@ export default async function SongPage({
     notFound();
   }
 
-  return <SongViewer song={song} />;
+  return (
+    <main className="min-h-screen w-full overflow-x-hidden bg-[#050505] text-zinc-100">
+      <SongViewer song={song} />
+    </main>
+  );
 }
