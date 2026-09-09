@@ -162,7 +162,7 @@ export default async function BandPage({
                   {songs.map((song, index) => (
                     <Link
                       key={song.id}
-                      href={`/song/${song.slug}`}
+                      href={`/song/${encodeURIComponent(song.slug)}`}
                       className="group flex items-center gap-4 py-5 transition hover:bg-white/[0.025]"
                     >
                       <span className="w-8 shrink-0 font-mono text-xs text-white/25">
@@ -191,7 +191,7 @@ export default async function BandPage({
                             <span>Key {song.originalKey}</span>
                           )}
 
-                          {song.bpm > 0 && (
+                          {(song.bpm ?? 0) > 0 && (
                             <>
                               <span>•</span>
                               <span>{song.bpm} BPM</span>
