@@ -1,18 +1,7 @@
 import Link from "next/link";
 import { getPublishedSongs } from "@/lib/songs";
+import { getPublishedBands } from "@/lib/bands";
 import SafeImage from "@/components/SafeImage";
-
-/*
- * =========================================================
- * PAGE CONFIG
- * =========================================================
- *
- * Pastikan Home selalu mengambil data terbaru dari database.
- *
- * Ini penting supaya ketika lu menambahkan lagu baru
- * dari aplikasi, website tidak menampilkan data lama
- * akibat cache.
- */
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -21,18 +10,16 @@ export const revalidate = 0;
    ICONS
 ========================================================= */
 
-function ArrowIcon() {
+function ArrowIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
     <svg
-      width="17"
-      height="17"
+      className={className}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      aria-hidden="true"
     >
       <path d="M5 12h14" />
       <path d="m13 6 6 6-6 6" />
@@ -40,18 +27,16 @@ function ArrowIcon() {
   );
 }
 
-function SearchIcon() {
+function SearchIcon({ className = "h-5 w-5" }: { className?: string }) {
   return (
     <svg
-      width="18"
-      height="18"
+      className={className}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      aria-hidden="true"
     >
       <circle cx="11" cy="11" r="7" />
       <path d="m20 20-4-4" />
@@ -59,38 +44,34 @@ function SearchIcon() {
   );
 }
 
-function MusicIcon() {
+function MusicIcon({ className = "h-5 w-5" }: { className?: string }) {
   return (
     <svg
-      width="19"
-      height="19"
+      className={className}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="1.8"
       strokeLinecap="round"
       strokeLinejoin="round"
-      aria-hidden="true"
     >
-      <path d="M9 18V5l12-2v13" />
+      <path d="M9 18V5l10-2v13" />
       <circle cx="6" cy="18" r="3" />
-      <circle cx="18" cy="16" r="3" />
+      <circle cx="16" cy="16" r="3" />
     </svg>
   );
 }
 
-function UsersIcon() {
+function UsersIcon({ className = "h-5 w-5" }: { className?: string }) {
   return (
     <svg
-      width="18"
-      height="18"
+      className={className}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="1.8"
       strokeLinecap="round"
       strokeLinejoin="round"
-      aria-hidden="true"
     >
       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
       <circle cx="9" cy="7" r="4" />
@@ -100,746 +81,697 @@ function UsersIcon() {
   );
 }
 
-function DiscIcon() {
+function DiscIcon({ className = "h-5 w-5" }: { className?: string }) {
   return (
     <svg
-      width="18"
-      height="18"
+      className={className}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
     >
       <circle cx="12" cy="12" r="9" />
       <circle cx="12" cy="12" r="2" />
       <path d="M12 3v7" />
+      <path d="M21 12h-7" />
+      <path d="M12 21v-7" />
+      <path d="M3 12h7" />
     </svg>
   );
 }
 
 /* =========================================================
-   HOME
+   HELPERS
 ========================================================= */
 
-export default async function Home() {
-  /*
-   * =======================================================
-   * FETCH DATABASE
-   * =======================================================
-   */
+function formatArtistName(name?: string) {
+  return name?.trim() || "Unknown Artist";
+}
 
-  const songs = await getPublishedSongs();
+function formatSongTitle(title?: string) {
+  return title?.trim() || "Untitled";
+}
 
-  /*
-   * =======================================================
-   * FEATURED / LATEST
-   * =======================================================
-   */
+/* =========================================================
+   PAGE
+========================================================= */
+
+export default async function HomePage() {
+  const [songs, bands] = await Promise.all([
+    getPublishedSongs(),
+    getPublishedBands(),
+  ]);
 
   const featuredSongs = songs.slice(0, 4);
   const latestSongs = songs.slice(0, 9);
 
   /*
-   * =======================================================
-   * ARTIST DATA
-   * =======================================================
+   * Hitung jumlah lagu per band dari data songs yang sudah
+   * kita ambil. Jadi Home tidak perlu melakukan query
+   * Firestore tambahan untuk setiap band.
    */
-
-  const artistMap = new Map<
-    string,
-    {
-      name: string;
-      cover: string;
-      count: number;
-    }
-  >();
+  const songCountByArtist = new Map<string, number>();
+  const firstCoverByArtist = new Map<string, string>();
 
   for (const song of songs) {
-    const artist =
-      song.artist?.trim() || "Unknown Artist";
+    const artist = song.artist?.trim();
 
-    const existing =
-      artistMap.get(artist);
+    if (!artist) continue;
 
-    if (existing) {
-      existing.count += 1;
+    songCountByArtist.set(
+      artist,
+      (songCountByArtist.get(artist) ?? 0) + 1
+    );
 
-      /*
-       * Kalau artist sebelumnya belum punya cover,
-       * coba gunakan cover lagu berikutnya.
-       */
-      if (
-        !existing.cover &&
-        song.coverImageUrl
-      ) {
-        existing.cover =
-          song.coverImageUrl;
-      }
-    } else {
-      artistMap.set(artist, {
-        name: artist,
-        cover:
-          song.coverImageUrl || "",
-        count: 1,
-      });
+    if (
+      !firstCoverByArtist.has(artist) &&
+      song.coverImageUrl
+    ) {
+      firstCoverByArtist.set(artist, song.coverImageUrl);
     }
   }
 
-  const artists = Array.from(
-    artistMap.values()
-  ).slice(0, 8);
-
   /*
-   * =======================================================
-   * HERO SONG
-   * =======================================================
+   * Ambil maksimal 8 band untuk section homepage.
    */
+  const bandsWithSongs = bands.slice(0, 8).map((band) => ({
+    band,
+    cover:
+      band.coverImageUrl ||
+      firstCoverByArtist.get(band.name) ||
+      band.logoUrl ||
+      "",
+    count: songCountByArtist.get(band.name) ?? 0,
+  }));
 
   const heroSong = songs[0];
 
-  /*
-   * =======================================================
-   * RENDER
-   * =======================================================
-   */
-
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#050505] text-zinc-100">
-
-      {/* ===================================================
-          GLOBAL BACKGROUND
-      =================================================== */}
-
-      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute left-1/2 top-[-300px] h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-amber-400/[0.035] blur-[140px]" />
-
-        <div className="absolute right-[-250px] top-[500px] h-[500px] w-[500px] rounded-full bg-amber-500/[0.025] blur-[120px]" />
-
-        <div className="absolute bottom-[-300px] left-[-200px] h-[500px] w-[500px] rounded-full bg-amber-300/[0.018] blur-[130px]" />
-      </div>
-
-      {/* ===================================================
+    <main className="min-h-screen bg-black text-white">
+      {/* =====================================================
           NAVBAR
-      =================================================== */}
+      ===================================================== */}
 
-      <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-[#050505]/80 backdrop-blur-2xl">
-        <div className="mx-auto flex h-[70px] max-w-7xl items-center justify-between gap-6 px-5 lg:px-8">
-
-          {/* LOGO */}
-
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-black/85 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          {/* Logo */}
           <Link
             href="/"
-            className="shrink-0 text-[19px] font-black tracking-[-0.04em] text-white transition hover:text-zinc-200 sm:text-xl"
+            className="group flex items-center gap-3"
           >
-            M4N
-            <span className="text-amber-400">
-              {" "}
-              CHORD
-            </span>
-            <span className="text-zinc-600">
-              .
-            </span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-400 text-black shadow-[0_0_25px_rgba(251,191,36,0.2)]">
+              <MusicIcon className="h-5 w-5" />
+            </div>
+
+            <div className="leading-none">
+              <div className="text-lg font-black tracking-tight">
+                CHORD
+                <span className="text-amber-400">.</span>
+              </div>
+
+              <div className="mt-1 text-[9px] font-semibold uppercase tracking-[0.25em] text-white/35">
+                Music Archive
+              </div>
+            </div>
           </Link>
 
-          {/* NAVIGATION */}
-
-          <nav className="hidden items-center gap-8 text-sm font-medium md:flex">
+          {/* Navigation */}
+          <nav className="hidden items-center gap-1 md:flex">
             <Link
               href="/"
-              className="relative py-2 text-white"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:bg-white/5 hover:text-amber-300"
             >
               Home
-
-              <span className="absolute bottom-0 left-0 h-[2px] w-full rounded-full bg-amber-400" />
             </Link>
 
             <Link
               href="/songs"
-              className="py-2 text-zinc-500 transition hover:text-white"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-white/60 transition hover:bg-white/5 hover:text-white"
             >
               Songs
             </Link>
 
             <Link
-              href="/artists"
-              className="py-2 text-zinc-500 transition hover:text-white"
+              href="/bands"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-white/60 transition hover:bg-white/5 hover:text-white"
             >
-              Artists
+              Bands
             </Link>
           </nav>
 
-          {/* RIGHT SIDE */}
-
+          {/* Right */}
           <div className="flex items-center gap-2">
-
-            {/* SEARCH DESKTOP */}
-
             <Link
               href="/songs"
-              className="hidden h-10 items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.035] px-4 text-xs text-zinc-500 transition hover:border-white/[0.15] hover:text-zinc-200 sm:flex"
-            >
-              <SearchIcon />
-
-              <span>
-                Search songs...
-              </span>
-            </Link>
-
-            {/* SEARCH MOBILE */}
-
-            <Link
-              href="/songs"
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.035] text-zinc-400 transition hover:border-amber-400/30 hover:text-amber-400 sm:hidden"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-white/60 transition hover:border-amber-400/30 hover:bg-amber-400/10 hover:text-amber-300"
               aria-label="Search songs"
             >
-              <SearchIcon />
+              <SearchIcon className="h-4 w-4" />
             </Link>
-
-            {/* APPEARANCE */}
 
             <button
               type="button"
-              className="hidden h-10 w-10 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.035] text-sm text-zinc-400 transition hover:border-amber-400/30 hover:text-amber-400 sm:flex"
-              aria-label="Appearance"
+              className="hidden h-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] px-4 text-xs font-semibold text-white/60 transition hover:border-amber-400/30 hover:bg-amber-400/10 hover:text-amber-300 sm:flex"
             >
-              ◐
+              Appearance
             </button>
           </div>
         </div>
       </header>
 
-      {/* ===================================================
+      {/* =====================================================
           HERO
-      =================================================== */}
+      ===================================================== */}
 
-      <section className="relative isolate mx-auto max-w-7xl px-5 pt-8 sm:pt-12 lg:px-8 lg:pt-16">
+      <section className="relative overflow-hidden border-b border-white/10">
+        {/* Background glow */}
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -left-40 -top-40 h-96 w-96 rounded-full bg-amber-400/10 blur-3xl" />
+          <div className="absolute right-0 top-1/3 h-80 w-80 rounded-full bg-amber-500/5 blur-3xl" />
 
-        <div className="relative min-h-[560px] overflow-hidden rounded-[30px] border border-white/[0.07] bg-[#090909] sm:min-h-[600px] lg:min-h-[620px]">
+          <div
+            className="absolute inset-0 opacity-[0.035]"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)",
+              backgroundSize: "48px 48px",
+            }}
+          />
+        </div>
 
-          {/* HERO BACKGROUND IMAGE */}
-
-          {heroSong?.coverImageUrl ? (
-            <>
-              <div
-                className="absolute inset-0 scale-105 bg-cover bg-center opacity-[0.14] blur-[2px]"
-                style={{
-                  backgroundImage: `url("${heroSong.coverImageUrl}")`,
-                }}
-              />
-
-              <div className="absolute inset-0 bg-gradient-to-r from-[#090909] via-[#090909]/95 to-[#090909]/35" />
-
-              <div className="absolute inset-0 bg-gradient-to-t from-[#090909] via-transparent to-transparent" />
-            </>
-          ) : (
-            <div className="absolute inset-0 bg-gradient-to-br from-amber-400/[0.04] via-transparent to-transparent" />
-          )}
-
-          {/* DECORATIVE CIRCLES */}
-
-          <div className="absolute right-[-100px] top-[-100px] h-[450px] w-[450px] rounded-full border border-amber-400/[0.04]" />
-
-          <div className="absolute right-[-60px] top-[-60px] h-[370px] w-[370px] rounded-full border border-amber-400/[0.025]" />
-
-          <div className="absolute bottom-[-180px] right-[10%] h-[420px] w-[420px] rounded-full border border-amber-400/[0.035]" />
-
-          {/* HERO CONTENT */}
-
-          <div className="relative flex min-h-[560px] flex-col justify-between p-7 sm:min-h-[600px] sm:p-10 lg:min-h-[620px] lg:p-14">
-
-            <div className="max-w-[700px] pt-4 sm:pt-8 lg:pt-10">
-
-              {/* EYEBROW */}
-
-              <div className="mb-5 flex items-center gap-3">
-                <span className="h-px w-8 bg-amber-400" />
-
-                <span className="text-[10px] font-bold uppercase tracking-[0.32em] text-amber-400 sm:text-xs">
-                  Guitar Chords & Lyrics
-                </span>
+        <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8 lg:py-32">
+          <div className="grid items-center gap-12 lg:grid-cols-[1.15fr_0.85fr]">
+            {/* Hero Copy */}
+            <div>
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-amber-400/20 bg-amber-400/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-amber-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.8)]" />
+                Guitar Chords Archive
               </div>
 
-              {/* TITLE */}
-
-              <h1 className="max-w-[700px] text-[48px] font-black leading-[0.94] tracking-[-0.055em] text-white sm:text-6xl lg:text-[78px]">
-                Play the song.
+              <h1 className="max-w-3xl text-5xl font-black leading-[0.95] tracking-[-0.04em] sm:text-6xl lg:text-8xl">
+                PLAY THE
                 <br />
-
-                <span className="text-zinc-500">
-                  Not the screen.
-                </span>
+                <span className="text-amber-400">MUSIC.</span>
               </h1>
 
-              {/* DESCRIPTION */}
-
-              <p className="mt-6 max-w-xl text-sm leading-7 text-zinc-400 sm:text-base">
-                Chord dan lirik langsung dari
-                database musik kamu.
-                <br className="hidden sm:block" />
-                Satu data untuk aplikasi dan
-                website.
+              <p className="mt-7 max-w-xl text-base leading-7 text-white/50 sm:text-lg">
+                Chord, lyrics, and music from the bands you love.
+                Discover songs, learn the chords, and play them your
+                way.
               </p>
 
-              {/* BUTTONS */}
-
-              <div className="mt-8 flex flex-wrap gap-3">
-
+              {/* CTA */}
+              <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                 <Link
                   href="/songs"
-                  className="group flex items-center gap-3 rounded-full bg-amber-400 px-5 py-3.5 text-sm font-bold text-black transition hover:bg-amber-300 active:scale-[0.98]"
+                  className="group inline-flex items-center justify-center gap-2 rounded-xl bg-amber-400 px-6 py-3.5 text-sm font-bold text-black transition hover:bg-amber-300"
                 >
-                  <MusicIcon />
-
                   Browse Songs
-
-                  <span className="transition-transform group-hover:translate-x-1">
-                    <ArrowIcon />
-                  </span>
+                  <ArrowIcon className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </Link>
 
                 <Link
-                  href="/artists"
-                  className="flex items-center gap-3 rounded-full border border-white/[0.1] bg-white/[0.035] px-5 py-3.5 text-sm font-bold text-zinc-200 transition hover:border-white/[0.2] hover:bg-white/[0.07]"
+                  href="/bands"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-6 py-3.5 text-sm font-bold text-white transition hover:border-white/20 hover:bg-white/[0.07]"
                 >
-                  <UsersIcon />
-
-                  Explore Artists
+                  Explore Bands
                 </Link>
-
-              </div>
-            </div>
-
-            {/* =================================================
-                STATS
-            ================================================== */}
-
-            <div className="mt-12 flex flex-wrap items-end gap-x-8 gap-y-5 sm:gap-x-12">
-
-              <div>
-                <p className="text-2xl font-black tracking-tight text-white sm:text-3xl">
-                  {songs.length}+
-                </p>
-
-                <p className="mt-1 text-xs text-zinc-500">
-                  Songs
-                </p>
               </div>
 
-              <div className="h-9 w-px bg-white/[0.08]" />
-
-              <div>
-                <p className="text-2xl font-black tracking-tight text-white sm:text-3xl">
-                  {artists.length}+
-                </p>
-
-                <p className="mt-1 text-xs text-zinc-500">
-                  Artists
-                </p>
-              </div>
-
-              <div className="h-9 w-px bg-white/[0.08]" />
-
-              <div>
-                <p className="text-2xl font-black tracking-tight text-white sm:text-3xl">
-                  100%
-                </p>
-
-                <p className="mt-1 text-xs text-zinc-500">
-                  Free
-                </p>
-              </div>
-
-            </div>
-
-            {/* SIDE QUOTE */}
-
-            <div className="absolute bottom-10 right-8 hidden rotate-[-8deg] font-serif text-2xl italic text-amber-400/60 lg:block">
-              Good music
-              <br />
-              lives longer
-
-              <div className="ml-auto mt-2 h-px w-8 bg-amber-400/50" />
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* ===================================================
-          FEATURED SONGS
-      =================================================== */}
-
-      <section className="mx-auto max-w-7xl px-5 pb-8 pt-20 lg:px-8 lg:pt-24">
-
-        <div className="mb-7 flex items-end justify-between">
-
-          <div>
-            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.3em] text-amber-400">
-              Discover
-            </p>
-
-            <h2 className="text-2xl font-black tracking-tight text-white sm:text-3xl">
-              Featured songs
-            </h2>
-
-            <p className="mt-1 text-sm text-zinc-600">
-              Pilihan lagu yang tersedia di
-              M4N Chord.
-            </p>
-          </div>
-
-          <Link
-            href="/songs"
-            className="hidden items-center gap-2 text-sm font-medium text-zinc-500 transition hover:text-amber-400 sm:flex"
-          >
-            View all
-            <ArrowIcon />
-          </Link>
-
-        </div>
-
-        {featuredSongs.length > 0 ? (
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-
-            {featuredSongs.map((song) => (
-
-              <Link
-                key={song.id}
-                href={`/song/${encodeURIComponent(song.slug)}`}
-                className="group relative overflow-hidden rounded-[22px] border border-white/[0.07] bg-[#090909] transition duration-300 hover:-translate-y-1 hover:border-amber-400/20"
-              >
-
-                <div className="relative aspect-[4/5] overflow-hidden bg-zinc-900">
-
-                  <SafeImage
-                    src={song.coverImageUrl}
-                    alt={`${song.title} cover`}
-                    priority
-                    className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
-                  />
-
-                  {/* GRADIENT */}
-
-                  <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black via-black/50 to-transparent" />
-
-                  {/* KEY */}
-
-                  {song.originalKey && (
-                    <span className="absolute right-3 top-3 rounded-lg border border-white/[0.08] bg-black/70 px-2.5 py-1.5 font-mono text-xs font-bold text-white backdrop-blur-md">
-                      {song.originalKey}
-                    </span>
-                  )}
-
-                  {/* SONG INFO */}
-
-                  <div className="absolute bottom-4 left-4 right-4">
-
-                    <h3 className="line-clamp-2 text-base font-bold leading-snug text-white">
-                      {song.title}
-                    </h3>
-
-                    <p className="mt-1 truncate text-sm text-zinc-400">
-                      {song.artist ||
-                        "Unknown Artist"}
-                    </p>
-
+              {/* Stats */}
+              <div className="mt-12 flex flex-wrap gap-x-8 gap-y-5 border-t border-white/10 pt-7">
+                <div>
+                  <div className="text-2xl font-black">
+                    {songs.length}
+                  </div>
+                  <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-white/35">
+                    Songs
                   </div>
                 </div>
-              </Link>
-            ))}
-          </div>
 
-        ) : (
+                <div className="h-10 w-px bg-white/10" />
 
-          <div className="rounded-2xl border border-white/[0.06] p-10 text-center text-sm text-zinc-600">
-            Belum ada lagu published.
-          </div>
-
-        )}
-
-        {/* MOBILE VIEW ALL */}
-
-        <Link
-          href="/songs"
-          className="mt-5 flex items-center justify-center gap-2 rounded-xl border border-white/[0.07] py-3 text-sm font-medium text-zinc-500 transition hover:border-white/[0.14] hover:text-white sm:hidden"
-        >
-          View all songs
-          <ArrowIcon />
-        </Link>
-
-      </section>
-
-      {/* ===================================================
-          LATEST SONGS
-      =================================================== */}
-
-      <section className="mx-auto max-w-7xl px-5 pb-8 pt-16 lg:px-8 lg:pt-20">
-
-        <div className="mb-7 flex items-end justify-between">
-
-          <div>
-            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.3em] text-amber-400">
-              Fresh from the database
-            </p>
-
-            <h2 className="text-2xl font-black tracking-tight text-white sm:text-3xl">
-              Latest songs
-            </h2>
-
-            <p className="mt-1 text-sm text-zinc-600">
-              Lagu terbaru yang sudah tersedia.
-            </p>
-          </div>
-
-          <Link
-            href="/songs"
-            className="hidden items-center gap-2 text-sm font-medium text-zinc-500 transition hover:text-amber-400 sm:flex"
-          >
-            View all
-            <ArrowIcon />
-          </Link>
-
-        </div>
-
-        {latestSongs.length > 0 ? (
-
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-
-            {latestSongs.map((song) => (
-
-              <Link
-                key={song.id}
-                href={`/song/${encodeURIComponent(song.slug)}`}
-                className="group flex min-w-0 items-center gap-3 rounded-2xl border border-white/[0.05] bg-[#090909]/70 p-2.5 transition hover:border-white/[0.11] hover:bg-[#0c0c0c]"
-              >
-
-                {/* COVER */}
-
-                <div className="h-[62px] w-[62px] shrink-0 overflow-hidden rounded-xl bg-zinc-900">
-
-                  <SafeImage
-                    src={song.coverImageUrl}
-                    alt=""
-                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                  />
-
+                <div>
+                  <div className="text-2xl font-black">
+                    {bands.length}
+                  </div>
+                  <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-white/35">
+                    Bands
+                  </div>
                 </div>
 
-                {/* INFO */}
+                <div className="h-10 w-px bg-white/10" />
 
-                <div className="min-w-0 flex-1">
-
-                  <h3 className="truncate text-sm font-bold text-zinc-200 transition group-hover:text-white">
-                    {song.title}
-                  </h3>
-
-                  <p className="mt-1 truncate text-xs text-zinc-600">
-                    {song.artist ||
-                      "Unknown Artist"}
-                  </p>
-
+                <div>
+                  <div className="text-2xl font-black text-amber-400">
+                    FREE
+                  </div>
+                  <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-white/35">
+                    Always
+                  </div>
                 </div>
-
-                {/* ARROW */}
-
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/[0.06] text-zinc-600 transition group-hover:border-amber-400/20 group-hover:text-amber-400">
-                  <ArrowIcon />
-                </span>
-
-              </Link>
-            ))}
-          </div>
-
-        ) : (
-
-          <div className="rounded-2xl border border-white/[0.06] p-10 text-center text-sm text-zinc-600">
-            Belum ada lagu published.
-          </div>
-
-        )}
-
-      </section>
-
-      {/* ===================================================
-          TOP ARTISTS
-      =================================================== */}
-
-      {artists.length > 0 && (
-
-        <section className="mx-auto max-w-7xl px-5 pb-8 pt-16 lg:px-8 lg:pt-20">
-
-          <div className="mb-8 flex items-end justify-between">
-
-            <div>
-
-              <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.3em] text-amber-400">
-                Artists
-              </p>
-
-              <h2 className="text-2xl font-black tracking-tight text-white sm:text-3xl">
-                Top artists
-              </h2>
-
-              <p className="mt-1 text-sm text-zinc-600">
-                Temukan lagu dari artist favorit
-                kamu.
-              </p>
-
+              </div>
             </div>
 
-            <Link
-              href="/artists"
-              className="hidden items-center gap-2 text-sm font-medium text-zinc-500 transition hover:text-amber-400 sm:flex"
-            >
-              View all
-              <ArrowIcon />
-            </Link>
+            {/* Hero Song */}
+            <div className="relative">
+              <div className="absolute -inset-4 rounded-[2rem] bg-amber-400/5 blur-2xl" />
 
-          </div>
-
-          {/* ARTIST SCROLLER */}
-
-          <div className="flex gap-5 overflow-x-auto pb-5 scrollbar-none">
-
-            {artists.map((artist) => (
-
-              <Link
-                key={artist.name}
-                href={`/artists/${encodeURIComponent(artist.name)}`}
-                className="group w-[90px] shrink-0 text-center sm:w-[105px]"
-              >
-
-                {/* ARTIST IMAGE */}
-
-                <div className="mx-auto aspect-square w-[76px] overflow-hidden rounded-full border border-white/[0.08] bg-zinc-900 p-[2px] transition duration-300 group-hover:border-amber-400/40 sm:w-[88px]">
-
-                  <div className="h-full w-full overflow-hidden rounded-full">
-
+              <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-zinc-950 shadow-2xl">
+                {heroSong?.coverImageUrl ? (
+                  <div className="relative aspect-[4/3]">
                     <SafeImage
-                      src={artist.cover}
-                      alt={artist.name}
-                      className="h-full w-full object-cover grayscale-[25%] transition duration-500 group-hover:scale-105 group-hover:grayscale-0"
+                      src={heroSong.coverImageUrl}
+                      alt={formatSongTitle(heroSong.title)}
+                      fill
+                      className="object-cover opacity-80"
                     />
 
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
+
+                    <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8">
+                      <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-amber-400">
+                        Featured Song
+                      </div>
+
+                      <h2 className="text-3xl font-black tracking-tight sm:text-4xl">
+                        {formatSongTitle(heroSong.title)}
+                      </h2>
+
+                      <p className="mt-2 text-sm text-white/50">
+                        {formatArtistName(heroSong.artist)}
+                      </p>
+
+                      <Link
+                        href={`/song/${encodeURIComponent(
+                          heroSong.slug
+                        )}`}
+                        className="mt-5 inline-flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2.5 text-xs font-bold backdrop-blur transition hover:bg-amber-400 hover:text-black"
+                      >
+                        View Chords
+                        <ArrowIcon className="h-3.5 w-3.5" />
+                      </Link>
+                    </div>
                   </div>
-
-                </div>
-
-                {/* ARTIST NAME */}
-
-                <p className="mt-3 truncate text-xs font-bold text-zinc-300 transition group-hover:text-white">
-                  {artist.name}
-                </p>
-
-                {/* SONG COUNT */}
-
-                <p className="mt-1 text-[10px] text-zinc-600">
-                  {artist.count}{" "}
-                  {artist.count === 1
-                    ? "song"
-                    : "songs"}
-                </p>
-
-              </Link>
-
-            ))}
-
-          </div>
-
-        </section>
-      )}
-
-      {/* ===================================================
-          CTA
-      =================================================== */}
-
-      <section className="mx-auto max-w-7xl px-5 pb-16 pt-16 lg:px-8 lg:pt-24">
-
-        <div className="relative overflow-hidden rounded-[28px] border border-amber-400/10 bg-gradient-to-br from-amber-400/[0.16] via-amber-400/[0.05] to-transparent p-7 sm:p-10 lg:p-12">
-
-          {/* GLOW */}
-
-          <div className="absolute right-[-80px] top-[-100px] h-[300px] w-[300px] rounded-full bg-amber-400/[0.08] blur-[80px]" />
-
-          {/* DECORATION */}
-
-          <div className="absolute bottom-[-100px] left-[-100px] h-[240px] w-[240px] rounded-full border border-amber-400/[0.04]" />
-
-          <div className="relative flex flex-col justify-between gap-8 sm:flex-row sm:items-center">
-
-            {/* TEXT */}
-
-            <div>
-
-              <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.3em] text-amber-400">
-                M4N Chord
-              </p>
-
-              <h2 className="max-w-xl text-3xl font-black leading-tight tracking-[-0.04em] text-white sm:text-4xl lg:text-5xl">
-                Music feels better
-                <br />
-                when you play it.
-              </h2>
-
-              <p className="mt-4 max-w-lg text-sm leading-6 text-zinc-500">
-                Semua chord dan lirik yang kamu
-                butuhkan untuk memainkan lagu
-                favoritmu.
-              </p>
-
+                ) : (
+                  <div className="flex aspect-[4/3] items-center justify-center bg-gradient-to-br from-zinc-900 to-black">
+                    <div className="text-center">
+                      <MusicIcon className="mx-auto h-10 w-10 text-amber-400/50" />
+                      <p className="mt-4 text-sm text-white/30">
+                        Your next song starts here.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
+          </div>
+        </div>
+      </section>
 
-            {/* CTA BUTTON */}
+      {/* =====================================================
+          FEATURED SONGS
+      ===================================================== */}
+
+      <section className="border-b border-white/10">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="mb-8 flex items-end justify-between gap-4">
+            <div>
+              <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.25em] text-amber-400">
+                Handpicked
+              </div>
+
+              <h2 className="text-3xl font-black tracking-tight sm:text-4xl">
+                Featured Songs
+              </h2>
+            </div>
 
             <Link
               href="/songs"
-              className="group flex w-fit shrink-0 items-center gap-3 rounded-full bg-amber-400 px-6 py-3.5 text-sm font-bold text-black transition hover:bg-amber-300 active:scale-[0.98]"
+              className="group hidden items-center gap-2 text-xs font-bold text-white/40 transition hover:text-amber-300 sm:flex"
             >
-              Explore Songs
-
-              <span className="transition-transform group-hover:translate-x-1">
-                <ArrowIcon />
-              </span>
+              View all
+              <ArrowIcon className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
+          </div>
 
+          {featuredSongs.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {featuredSongs.map((song, index) => (
+                <Link
+                  key={song.id}
+                  href={`/song/${encodeURIComponent(song.slug)}`}
+                  className="group relative overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 transition hover:-translate-y-1 hover:border-amber-400/30 hover:bg-zinc-900"
+                >
+                  <div className="relative aspect-square overflow-hidden bg-zinc-900">
+                    {song.coverImageUrl ? (
+                      <SafeImage
+                        src={song.coverImageUrl}
+                        alt={formatSongTitle(song.title)}
+                        fill
+                        className="object-cover transition duration-500 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-900 to-black">
+                        <MusicIcon className="h-8 w-8 text-white/10" />
+                      </div>
+                    )}
+
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+
+                    <div className="absolute left-3 top-3 flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-black/50 text-[10px] font-black text-white/50 backdrop-blur">
+                      0{index + 1}
+                    </div>
+
+                    <div className="absolute bottom-4 left-4 right-4">
+                      <h3 className="truncate text-lg font-black">
+                        {formatSongTitle(song.title)}
+                      </h3>
+
+                      <p className="mt-1 truncate text-xs text-white/45">
+                        {formatArtistName(song.artist)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between px-4 py-3.5">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/30">
+                      {song.originalKey || "—"}
+                    </span>
+
+                    <ArrowIcon className="h-4 w-4 text-white/20 transition group-hover:translate-x-1 group-hover:text-amber-400" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-white/10 px-6 py-16 text-center">
+              <MusicIcon className="mx-auto h-8 w-8 text-white/10" />
+
+              <p className="mt-4 text-sm text-white/30">
+                No songs available yet.
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* =====================================================
+          LATEST SONGS
+      ===================================================== */}
+
+      <section className="border-b border-white/10 bg-zinc-950/40">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="mb-8 flex items-end justify-between gap-4">
+            <div>
+              <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.25em] text-amber-400">
+                Recently Added
+              </div>
+
+              <h2 className="text-3xl font-black tracking-tight sm:text-4xl">
+                Latest Songs
+              </h2>
+            </div>
+
+            <Link
+              href="/songs"
+              className="group hidden items-center gap-2 text-xs font-bold text-white/40 transition hover:text-amber-300 sm:flex"
+            >
+              Browse library
+              <ArrowIcon className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </Link>
+          </div>
+
+          {latestSongs.length > 0 ? (
+            <div className="divide-y divide-white/5 overflow-hidden rounded-2xl border border-white/10 bg-black">
+              {latestSongs.map((song, index) => (
+                <Link
+                  key={song.id}
+                  href={`/song/${encodeURIComponent(song.slug)}`}
+                  className="group flex items-center gap-4 px-4 py-4 transition hover:bg-white/[0.025] sm:px-5"
+                >
+                  {/* Number */}
+                  <div className="w-7 shrink-0 text-center text-xs font-bold text-white/20">
+                    {String(index + 1).padStart(2, "0")}
+                  </div>
+
+                  {/* Cover */}
+                  <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-zinc-900">
+                    {song.coverImageUrl ? (
+                      <SafeImage
+                        src={song.coverImageUrl}
+                        alt={formatSongTitle(song.title)}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <MusicIcon className="h-4 w-4 text-white/15" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate text-sm font-bold text-white transition group-hover:text-amber-300 sm:text-base">
+                      {formatSongTitle(song.title)}
+                    </h3>
+
+                    <p className="mt-1 truncate text-xs text-white/35">
+                      {formatArtistName(song.artist)}
+                    </p>
+                  </div>
+
+                  {/* Key */}
+                  <div className="hidden shrink-0 text-right sm:block">
+                    <div className="text-[9px] font-bold uppercase tracking-[0.15em] text-white/20">
+                      Key
+                    </div>
+
+                    <div className="mt-1 text-xs font-bold text-white/50">
+                      {song.originalKey || "—"}
+                    </div>
+                  </div>
+
+                  {/* BPM */}
+                  <div className="hidden w-16 shrink-0 text-right md:block">
+                    <div className="text-[9px] font-bold uppercase tracking-[0.15em] text-white/20">
+                      BPM
+                    </div>
+
+                    <div className="mt-1 text-xs font-bold text-white/50">
+                      {song.bpm || "—"}
+                    </div>
+                  </div>
+
+                  {/* Arrow */}
+                  <ArrowIcon className="h-4 w-4 shrink-0 text-white/15 transition group-hover:translate-x-1 group-hover:text-amber-400" />
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-white/10 px-6 py-16 text-center">
+              <MusicIcon className="mx-auto h-8 w-8 text-white/10" />
+
+              <p className="mt-4 text-sm text-white/30">
+                No songs available yet.
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* =====================================================
+          TOP BANDS
+      ===================================================== */}
+
+      <section className="border-b border-white/10">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="mb-8 flex items-end justify-between gap-4">
+            <div>
+              <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.25em] text-amber-400">
+                <UsersIcon className="h-3.5 w-3.5" />
+                Artists & Bands
+              </div>
+
+              <h2 className="text-3xl font-black tracking-tight sm:text-4xl">
+                Top Bands
+              </h2>
+            </div>
+
+            <Link
+              href="/bands"
+              className="group hidden items-center gap-2 text-xs font-bold text-white/40 transition hover:text-amber-300 sm:flex"
+            >
+              View all bands
+              <ArrowIcon className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </Link>
+          </div>
+
+          {bandsWithSongs.length > 0 ? (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+              {bandsWithSongs.map(({ band, cover, count }) => (
+                <Link
+                  key={band.id}
+                  href={`/band/${encodeURIComponent(band.slug)}`}
+                  className="group overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 transition hover:-translate-y-1 hover:border-amber-400/30"
+                >
+                  {/* Cover */}
+                  <div className="relative aspect-[4/3] overflow-hidden bg-zinc-900">
+                    {cover ? (
+                      <SafeImage
+                        src={cover}
+                        alt={band.name}
+                        fill
+                        className="object-cover transition duration-500 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-900 via-zinc-950 to-black">
+                        {band.logoUrl ? (
+                          <div className="relative h-20 w-20">
+                            <SafeImage
+                              src={band.logoUrl}
+                              alt={band.name}
+                              fill
+                              className="object-contain opacity-80"
+                            />
+                          </div>
+                        ) : (
+                          <UsersIcon className="h-9 w-9 text-white/10" />
+                        )}
+                      </div>
+                    )}
+
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" />
+
+                    <div className="absolute bottom-3 left-3 right-3">
+                      <h3 className="truncate text-base font-black sm:text-lg">
+                        {band.name}
+                      </h3>
+
+                      {band.genre && (
+                        <p className="mt-1 truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">
+                          {band.genre}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex items-center justify-between px-4 py-3.5">
+                    <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-white/30">
+                      <DiscIcon className="h-3.5 w-3.5" />
+
+                      {count} {count === 1 ? "Song" : "Songs"}
+                    </div>
+
+                    <ArrowIcon className="h-4 w-4 text-white/15 transition group-hover:translate-x-1 group-hover:text-amber-400" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-white/10 px-6 py-16 text-center">
+              <UsersIcon className="mx-auto h-8 w-8 text-white/10" />
+
+              <p className="mt-4 text-sm text-white/30">
+                No bands available yet.
+              </p>
+
+              <Link
+                href="/bands"
+                className="mt-5 inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2.5 text-xs font-bold text-white/50 transition hover:border-amber-400/30 hover:text-amber-300"
+              >
+                Explore Bands
+                <ArrowIcon className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* =====================================================
+          CTA
+      ===================================================== */}
+
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-amber-400/[0.03]" />
+
+        <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+          <div className="relative overflow-hidden rounded-3xl border border-amber-400/15 bg-gradient-to-br from-amber-400/[0.08] via-transparent to-transparent px-6 py-14 text-center sm:px-12">
+            <div className="pointer-events-none absolute left-1/2 top-0 h-40 w-96 -translate-x-1/2 rounded-full bg-amber-400/10 blur-3xl" />
+
+            <div className="relative">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-400/20 bg-amber-400/10 text-amber-400">
+                <MusicIcon className="h-6 w-6" />
+              </div>
+
+              <h2 className="mt-6 text-3xl font-black tracking-tight sm:text-4xl">
+                Ready to play?
+              </h2>
+
+              <p className="mx-auto mt-4 max-w-lg text-sm leading-6 text-white/40">
+                Find your favorite song, grab your guitar, and
+                start playing.
+              </p>
+
+              <Link
+                href="/songs"
+                className="mt-7 inline-flex items-center gap-2 rounded-xl bg-amber-400 px-6 py-3.5 text-sm font-black text-black transition hover:bg-amber-300"
+              >
+                Explore Songs
+                <ArrowIcon className="h-4 w-4" />
+              </Link>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ===================================================
+      {/* =====================================================
           FOOTER
-      =================================================== */}
+      ===================================================== */}
 
-      <footer className="border-t border-white/[0.05]">
-
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-8 sm:flex-row sm:items-center sm:justify-between lg:px-8">
-
-          <Link
-            href="/"
-            className="text-sm font-black tracking-tight text-zinc-300"
-          >
-            M4N{" "}
-            <span className="text-amber-400">
+      <footer className="border-t border-white/10">
+        <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-8 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
+          <div>
+            <div className="text-sm font-black tracking-tight">
               CHORD
-            </span>
-            .
-          </Link>
+              <span className="text-amber-400">.</span>
+            </div>
 
-          <div className="flex items-center gap-2 text-xs text-zinc-700">
-            <DiscIcon />
-
-            <span>
-              Chords & lyrics for musicians.
-            </span>
+            <p className="mt-1 text-[10px] uppercase tracking-[0.15em] text-white/20">
+              Music Archive
+            </p>
           </div>
 
+          <div className="flex flex-wrap items-center gap-5 text-xs font-medium text-white/30">
+            <Link
+              href="/"
+              className="transition hover:text-white"
+            >
+              Home
+            </Link>
+
+            <Link
+              href="/songs"
+              className="transition hover:text-white"
+            >
+              Songs
+            </Link>
+
+            <Link
+              href="/bands"
+              className="transition hover:text-white"
+            >
+              Bands
+            </Link>
+          </div>
+
+          <div className="text-[10px] uppercase tracking-[0.15em] text-white/15">
+            © {new Date().getFullYear()} Chord
+          </div>
         </div>
       </footer>
-
     </main>
   );
 }
