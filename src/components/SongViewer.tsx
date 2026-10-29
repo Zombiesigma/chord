@@ -835,9 +835,9 @@ export default function SongViewer({ song }: { song: Song }) {
 
       {/* SONG INFORMATION */}
 
-      <section className="mx-auto max-w-[1440px] px-4 pb-9 pt-8 sm:pb-10 sm:pt-12 lg:px-8 lg:pb-12 lg:pt-14">
-        <div className="grid gap-6 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-end lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-10 xl:grid-cols-[300px_minmax(0,1fr)]">
-          <div className="mx-auto aspect-square w-full max-w-[220px] overflow-hidden rounded-[26px] lg:max-w-none lg:rounded-[30px] bg-[#202020] shadow-[0_30px_100px_rgba(0,0,0,0.45)] sm:mx-0 sm:max-w-none">
+      <section className="mx-auto max-w-[1320px] px-4 pb-8 pt-7 sm:pb-10 sm:pt-10 lg:px-8 lg:pb-10 lg:pt-10">
+        <div className="grid gap-5 sm:grid-cols-[160px_minmax(0,1fr)] sm:items-center lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-8 xl:grid-cols-[250px_minmax(0,1fr)]">
+          <div className="mx-auto aspect-square w-full max-w-[190px] overflow-hidden rounded-2xl border border-white/[0.06] bg-[#151515] shadow-[0_18px_55px_rgba(0,0,0,0.35)] sm:mx-0 sm:max-w-none lg:max-w-[250px] lg:rounded-3xl">
             {song.coverImageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -859,7 +859,7 @@ export default function SongViewer({ song }: { song: Song }) {
               {song.genre || "Song"}
             </p>
 
-            <h1 className="mt-2 break-words text-4xl font-black tracking-[-0.045em] text-[#F5F5F5] sm:text-6xl lg:text-7xl xl:text-8xl">
+            <h1 className="mt-2 break-words text-4xl font-black leading-[0.98] tracking-[-0.045em] text-[#F5F5F5] sm:text-5xl lg:text-6xl xl:text-7xl">
               {song.title}
             </h1>
 
@@ -867,7 +867,7 @@ export default function SongViewer({ song }: { song: Song }) {
               {song.artist || "Unknown artist"}
             </p>
 
-            <div className="mt-5 flex max-w-full flex-wrap gap-2">
+            <div className="mt-4 flex max-w-full flex-wrap gap-2">
               {displayedKey && (
                 <span className="rounded-full bg-[#202020] px-3 py-2 text-xs text-[#A1A1AA]">
                   Key {displayedKey}
@@ -889,7 +889,7 @@ export default function SongViewer({ song }: { song: Song }) {
               ) : null}
             </div>
 
-            <div className="mt-5 flex flex-wrap gap-3">
+            <div className="mt-4 flex flex-wrap gap-2">
               {song.youtubeUrl ? (
                 <a
                   href={song.youtubeUrl}
@@ -917,17 +917,17 @@ export default function SongViewer({ song }: { song: Song }) {
       </section>
 
       {/* RESPONSIVE PRACTICE LAYOUT: sidebar on desktop, stacked on mobile */}
-      <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-0 px-4 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start lg:gap-8 lg:px-8 xl:grid-cols-[340px_minmax(0,1fr)] xl:gap-10">
+      <div className="mx-auto grid w-full max-w-[1320px] grid-cols-1 gap-0 px-4 lg:grid-cols-[270px_minmax(0,1fr)] lg:items-start lg:gap-6 lg:px-8 xl:grid-cols-[300px_minmax(0,1fr)] xl:gap-8">
 
       {/* CHORD SUMMARY */}
 
-      <section className="min-w-0 pb-2 lg:col-start-1 lg:row-start-1 lg:rounded-3xl lg:border lg:border-[#242424] lg:bg-[#0B0B0B] lg:p-5">
+      <section className="min-w-0 pb-2 lg:sticky lg:top-24 lg:col-start-1 lg:row-start-1 lg:rounded-2xl lg:border lg:border-white/[0.07] lg:bg-gradient-to-b lg:from-[#111111] lg:to-[#090909] lg:p-4 xl:p-5">
         <ChordList chords={displayedChords} onSelect={setSelectedChord} />
       </section>
 
       {/* METRONOME */}
-      <section className="min-w-0 pb-5 lg:col-start-1 lg:row-start-2 lg:rounded-3xl lg:border lg:border-[#242424] lg:bg-[#0B0B0B] lg:p-5">
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-[20px] border border-[#202020] bg-[#171717] p-4 sm:p-5 lg:border-0 lg:bg-transparent lg:p-0">
+      <section className="min-w-0 pb-5 lg:col-start-1 lg:row-start-2 lg:rounded-2xl lg:border lg:border-white/[0.07] lg:bg-[#0B0B0B] lg:p-4 xl:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/[0.07] bg-[#111111] p-4 sm:p-5 lg:border-0 lg:bg-transparent lg:p-0">
           <div><p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#737373]">Metronome</p><p className="mt-1 text-sm text-[#A1A1AA]">Practice tempo · {bpm} BPM</p></div>
           <div className="flex items-center gap-3"><button type="button" onClick={() => setBpm((value) => Math.max(30, value - 1))} className="h-9 w-9 rounded-lg border border-[#333333] text-lg hover:bg-[#202020]" aria-label="Decrease BPM">−</button><input type="range" min="30" max="240" value={bpm} onChange={(event) => setBpm(Number(event.target.value))} className="w-28 accent-[#FFC400] sm:w-40" aria-label="Metronome BPM"/><button type="button" onClick={() => setBpm((value) => Math.min(240, value + 1))} className="h-9 w-9 rounded-lg border border-[#333333] text-lg hover:bg-[#202020]" aria-label="Increase BPM">+</button><button type="button" onClick={() => setMetronomeOn((value) => !value)} aria-pressed={metronomeOn} className={`rounded-xl px-4 py-2 text-sm font-bold ${metronomeOn ? "bg-[#FFC400] text-black" : "border border-[#333333] bg-[#111111] text-[#A1A1AA]"}`}>{metronomeOn ? "Ⅱ Stop" : "▶ Start"}</button></div>
           <div className="flex w-full justify-center gap-2" aria-label={`Beat ${beat}`}><span className={`h-2.5 w-2.5 rounded-full ${beat === 1 ? "bg-[#FFC400]" : "bg-[#333333]"}`} /><span className={`h-2.5 w-2.5 rounded-full ${beat === 2 ? "bg-[#FFC400]" : "bg-[#333333]"}`} /><span className={`h-2.5 w-2.5 rounded-full ${beat === 3 ? "bg-[#FFC400]" : "bg-[#333333]"}`} /><span className={`h-2.5 w-2.5 rounded-full ${beat === 4 ? "bg-[#FFC400]" : "bg-[#333333]"}`} /></div>
@@ -936,9 +936,9 @@ export default function SongViewer({ song }: { song: Song }) {
 
       {/* LYRICS */}
 
-      <section className="min-w-0 pb-16 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:rounded-3xl lg:border lg:border-[#242424] lg:bg-[#080808] lg:px-7 lg:pb-20 xl:px-10">
+      <section className="min-w-0 pb-16 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:rounded-2xl lg:border lg:border-white/[0.07] lg:bg-[#090909] lg:px-7 lg:pb-20 xl:px-10">
         <div
-          className="w-full min-w-0 px-1 py-4 pb-36 sm:px-4 sm:py-6 sm:pb-40 lg:px-0 lg:py-8 lg:pb-24"
+          className="mx-auto w-full min-w-0 max-w-[850px] px-1 py-4 pb-36 sm:px-4 sm:py-6 sm:pb-40 lg:px-0 lg:py-7 lg:pb-24"
           style={{ fontSize: `${fontSize}px` }}
         >
           {parsedLines.map((line, index) => {
@@ -975,7 +975,7 @@ export default function SongViewer({ song }: { song: Song }) {
             return (
               <div
                 key={`line-${index}`}
-                className="mb-4 w-full min-w-0"
+                className="mb-5 w-full min-w-0 lg:mb-6"
               >
                 <ChordLyricLine
                   chords={line.chords}
@@ -992,7 +992,7 @@ export default function SongViewer({ song }: { song: Song }) {
       {/* RESPONSIVE FLOATING PRACTICE CONTROLLER — CHORD. dark/gold theme */}
       {showPracticeController ? (
         <div
-          className="fixed inset-x-0 bottom-0 z-[80] border-t border-[#292929] bg-[#050505]/[0.97] text-[#F5F5F5] shadow-[0_-10px_35px_rgba(0,0,0,0.45)] backdrop-blur-xl pb-[env(safe-area-inset-bottom)] lg:inset-x-auto lg:bottom-6 lg:right-8 lg:w-[430px] lg:rounded-2xl lg:border lg:border-[#333333] lg:shadow-[0_20px_70px_rgba(0,0,0,0.65)]"
+          className="fixed inset-x-0 bottom-0 z-[80] border-t border-[#292929] bg-[#050505]/[0.97] text-[#F5F5F5] shadow-[0_-10px_35px_rgba(0,0,0,0.45)] backdrop-blur-xl pb-[env(safe-area-inset-bottom)] lg:inset-x-auto lg:bottom-6 lg:right-8 lg:w-[390px] lg:rounded-2xl lg:border lg:border-white/[0.09] lg:bg-[#080808]/[0.98] lg:shadow-[0_18px_60px_rgba(0,0,0,0.7)]"
           role="region"
           aria-label="Floating song practice controls"
         >
@@ -1013,7 +1013,7 @@ export default function SongViewer({ song }: { song: Song }) {
 
       {/* FOOTER */}
 
-      <footer className="mx-auto max-w-[1440px] px-4 pb-28 text-center text-xs text-[#7B817F] lg:px-8 lg:pb-32">
+      <footer className="mx-auto max-w-[1320px] px-4 pb-28 pt-6 text-center text-xs text-[#666666] lg:px-8 lg:pb-32">
         {song.title}
         {song.artist ? ` · ${song.artist}` : ""}
       </footer>
