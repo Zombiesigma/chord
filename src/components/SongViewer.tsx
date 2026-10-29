@@ -354,9 +354,11 @@ function buildSegments(
 function ChordLyricLine({
   chords,
   lyrics,
+  onSelectChord,
 }: {
   chords: ChordPosition[];
   lyrics: string;
+  onSelectChord?: (chord: string) => void;
 }) {
   if (!chords.length) {
     return (
@@ -377,9 +379,14 @@ function ChordLyricLine({
             className="relative inline-flex min-w-0 max-w-full flex-col align-bottom"
           >
             {segment.chord ? (
-              <span className="mb-0.5 block whitespace-nowrap font-mono text-[0.85em] font-bold leading-[1.3] text-amber-400">
+              <button
+                type="button"
+                onClick={() => onSelectChord?.(segment.chord)}
+                title={`Lihat diagram ${segment.chord}`}
+                className="mb-0.5 block w-fit whitespace-nowrap font-mono text-[0.85em] font-bold leading-[1.3] text-amber-400 hover:text-amber-300 focus-visible:outline-none focus-visible:underline"
+              >
                 {segment.chord}
-              </span>
+              </button>
             ) : (
               <span
                 aria-hidden="true"
@@ -417,31 +424,55 @@ function SectionHeader({ title }: { title: string }) {
    CHORD LIST
 ========================================================= */
 
-function ChordList({ chords }: { chords: string[] }) {
-  if (!chords.length) return null;
+const OPEN_CHORD_SHAPES: Record<string, { frets: number[]; fingers: number[]; label: string }> = {
+  C: { frets: [-1, 3, 2, 0, 1, 0], fingers: [0, 3, 2, 0, 1, 0], label: "x32010" },
+  D: { frets: [-1, -1, 0, 2, 3, 2], fingers: [0, 0, 0, 1, 3, 2], label: "xx0232" },
+  E: { frets: [0, 2, 2, 1, 0, 0], fingers: [0, 2, 3, 1, 0, 0], label: "022100" },
+  G: { frets: [3, 2, 0, 0, 0, 3], fingers: [2, 1, 0, 0, 0, 3], label: "320003" },
+  A: { frets: [-1, 0, 2, 2, 2, 0], fingers: [0, 0, 1, 2, 3, 0], label: "x02220" },
+  Am: { frets: [-1, 0, 2, 2, 1, 0], fingers: [0, 0, 2, 3, 1, 0], label: "x02210" },
+  Dm: { frets: [-1, -1, 0, 2, 3, 1], fingers: [0, 0, 0, 2, 3, 1], label: "xx0231" },
+  Em: { frets: [0, 2, 2, 0, 0, 0], fingers: [0, 2, 3, 0, 0, 0], label: "022000" },
+  F: { frets: [1, 3, 3, 2, 1, 1], fingers: [1, 3, 4, 2, 1, 1], label: "133211" },
+  Bm: { frets: [-1, 2, 4, 4, 3, 2], fingers: [0, 1, 3, 4, 2, 1], label: "x24432" },
+};
 
+function ChordDiagram({ chord, onClose }: { chord: string; onClose: () => void }) {
+  const rootChord = chord.replace(/\/.*$/, "");
+  const shape = OPEN_CHORD_SHAPES[rootChord];
+  return (
+    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/75 p-3 backdrop-blur-sm sm:items-center" role="dialog" aria-modal="true" aria-label={`Chord diagram ${chord}`} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <div className="w-full max-w-sm rounded-3xl border border-zinc-700 bg-[#101010] p-5 shadow-2xl">
+        <div className="flex items-center justify-between">
+          <div><p className="text-[10px] font-bold uppercase tracking-[.25em] text-zinc-500">Chord diagram</p><h2 className="mt-1 text-3xl font-black text-amber-400">{chord}</h2></div>
+          <button type="button" onClick={onClose} className="rounded-xl border border-zinc-700 px-3 py-2 text-zinc-300 hover:bg-zinc-800" aria-label="Close chord diagram">✕</button>
+        </div>
+        {shape ? (
+          <div className="mt-5">
+            <svg viewBox="0 0 240 190" role="img" aria-label={`${chord} guitar chord shape`} className="mx-auto w-full max-w-[260px]">
+              {[0,1,2,3,4,5].map((string) => <line key={`s${string}`} x1={42 + string * 31} y1="36" x2={42 + string * 31} y2="156" stroke="#a1a1aa" strokeWidth={string === 0 || string === 5 ? 1.8 : 1.2} />)}
+              {[0,1,2,3,4].map((fret) => <line key={`f${fret}`} x1="42" y1={36 + fret * 30} x2="197" y2={36 + fret * 30} stroke={fret === 0 ? "#e4e4e7" : "#52525b"} strokeWidth={fret === 0 ? 4 : 1.2} />)}
+              {shape.frets.map((fret, i) => <g key={`dot${i}`}>
+                {fret < 0 ? <text x={42 + i * 31} y="23" textAnchor="middle" fontSize="17" fill="#fbbf24">×</text> : fret === 0 ? <circle cx={42 + i * 31} cy="20" r="6" fill="none" stroke="#fbbf24" strokeWidth="2" /> : <circle cx={42 + i * 31} cy={36 + (fret - 0.5) * 30} r="8" fill="#fbbf24" />}
+              </g>)}
+            </svg>
+            <p className="mt-2 text-center font-mono text-sm tracking-[.25em] text-zinc-400">{shape.label}</p>
+            <p className="mt-3 text-center text-xs text-zinc-500">Diagram chord dasar. Untuk variasi/barre chord, cek fingering sesuai versi lagu.</p>
+          </div>
+        ) : (
+          <div className="mt-5 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5"><p className="font-medium text-zinc-200">Bentuk chord ini belum tersedia sebagai diagram otomatis.</p><p className="mt-2 text-sm text-zinc-500">Coba chord dasar seperti C, D, E, G, A, Am, Dm, Em, F, atau Bm.</p></div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ChordList({ chords, onSelect }: { chords: string[]; onSelect: (chord: string) => void }) {
+  if (!chords.length) return null;
   return (
     <section className="mb-8 border-b border-zinc-900 pb-7">
-      <div className="mb-4">
-        <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
-          Chords
-        </p>
-
-        <p className="mt-1 text-xs text-zinc-600">
-          {chords.length} {chords.length === 1 ? "chord" : "chords"}
-        </p>
-      </div>
-
-      <div className="flex max-w-full flex-wrap gap-2">
-        {chords.map((chord, index) => (
-          <span
-            key={`${chord}-${index}`}
-            className="rounded-xl border border-amber-400/10 bg-zinc-900/60 px-3.5 py-2 font-mono text-sm font-bold text-amber-400"
-          >
-            {chord}
-          </span>
-        ))}
-      </div>
+      <div className="mb-4"><p className="text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Chords</p><p className="mt-1 text-xs text-zinc-600">{chords.length} {chords.length === 1 ? "chord" : "chords"} · tap chord untuk lihat diagram</p></div>
+      <div className="flex max-w-full flex-wrap gap-2">{chords.map((chord, index) => <button type="button" key={`${chord}-${index}`} onClick={() => onSelect(chord)} className="rounded-xl border border-amber-400/10 bg-zinc-900/60 px-3.5 py-2 font-mono text-sm font-bold text-amber-400 transition hover:border-amber-400/50 hover:bg-amber-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">{chord}</button>)}</div>
     </section>
   );
 }
@@ -455,9 +486,22 @@ export default function SongViewer({ song }: { song: Song }) {
   const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE);
   const [autoScroll, setAutoScroll] = useState(false);
   const [scrollSpeed, setScrollSpeed] = useState(2);
+  const [selectedChord, setSelectedChord] = useState<string | null>(null);
+  const [capoOffset, setCapoOffset] = useState<number>(Number(song.capo ?? 0));
+  const [metronomeOn, setMetronomeOn] = useState(false);
+  const [beat, setBeat] = useState(0);
+  const [bpm, setBpm] = useState<number>(Number(song.bpm ?? 90) || 90);
 
   const animationRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    setCapoOffset(Number(song.capo ?? 0));
+    setBpm(Number(song.bpm ?? 90) || 90);
+    setShift(0);
+    setSelectedChord(null);
+    setMetronomeOn(false);
+  }, [song.title, song.capo, song.bpm]);
 
   const rawLyrics = song.lyricsWithChords || "";
 
@@ -620,6 +664,28 @@ export default function SongViewer({ song }: { song: Song }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!metronomeOn) { setBeat(0); return; }
+    let timer: ReturnType<typeof setInterval> | undefined;
+    let audioContext: AudioContext | null = null;
+    let currentBeat = 0;
+    try { audioContext = new window.AudioContext(); } catch { setMetronomeOn(false); return; }
+    const click = () => {
+      if (!audioContext) return;
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.frequency.value = currentBeat % 4 === 0 ? 1200 : 800;
+      gain.gain.setValueAtTime(0.0001, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.18, audioContext.currentTime + 0.005);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.07);
+      oscillator.connect(gain); gain.connect(audioContext.destination);
+      oscillator.start(); oscillator.stop(audioContext.currentTime + 0.08);
+      currentBeat = (currentBeat + 1) % 4; setBeat(currentBeat === 0 ? 4 : currentBeat);
+    };
+    click(); timer = setInterval(click, 60000 / Math.max(30, Math.min(240, bpm)));
+    return () => { if (timer) clearInterval(timer); void audioContext?.close(); };
+  }, [metronomeOn, bpm]);
+
   const resetScroll = useCallback(() => {
     stopAutoScroll();
     window.scrollTo({
@@ -674,7 +740,7 @@ export default function SongViewer({ song }: { song: Song }) {
             >
               <button
                 type="button"
-                onClick={() => setShift((value) => value - 1)}
+                onClick={() => setShift((value) => Math.max(-12, value - 1))}
                 className="flex h-9 w-9 items-center justify-center rounded-lg text-lg text-zinc-300 transition hover:bg-zinc-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 active:scale-95"
                 aria-label="Transpose down one semitone"
               >
@@ -693,7 +759,7 @@ export default function SongViewer({ song }: { song: Song }) {
 
               <button
                 type="button"
-                onClick={() => setShift((value) => value + 1)}
+                onClick={() => setShift((value) => Math.min(12, value + 1))}
                 className="flex h-9 w-9 items-center justify-center rounded-lg text-lg text-zinc-300 transition hover:bg-zinc-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 active:scale-95"
                 aria-label="Transpose up one semitone"
               >
@@ -780,9 +846,7 @@ export default function SongViewer({ song }: { song: Song }) {
                 </span>
               )}
 
-              <span className="rounded-full bg-zinc-900 px-3 py-2 text-xs text-zinc-400">
-                Capo {song.capo ?? 0}
-              </span>
+              <label className="flex items-center gap-2 rounded-full bg-zinc-900 px-3 py-2 text-xs text-zinc-400">Capo <select value={capoOffset} onChange={(event) => setCapoOffset(Number(event.target.value))} className="bg-transparent font-bold text-zinc-200 outline-none" aria-label="Capo position" title="Atur posisi capo untuk sesi latihan ini">{Array.from({ length: 13 }, (_, index) => <option key={index} value={index} className="bg-zinc-900">{index}</option>)}</select></label>
 
               {song.bpm ? (
                 <span className="rounded-full bg-zinc-900 px-3 py-2 text-xs text-zinc-400">
@@ -827,7 +891,7 @@ export default function SongViewer({ song }: { song: Song }) {
       {/* CHORD SUMMARY */}
 
       <section className="mx-auto max-w-5xl px-4 pb-2">
-        <ChordList chords={displayedChords} />
+        <ChordList chords={displayedChords} onSelect={setSelectedChord} />
       </section>
 
       {/* AUTO SCROLL */}
@@ -886,6 +950,15 @@ export default function SongViewer({ song }: { song: Song }) {
         </div>
       </section>
 
+      {/* METRONOME */}
+      <section className="mx-auto max-w-5xl px-4 pb-5">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-[20px] border border-zinc-800 bg-zinc-900/40 p-4 sm:p-5">
+          <div><p className="text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Metronome</p><p className="mt-1 text-sm text-zinc-300">Practice tempo · {bpm} BPM</p></div>
+          <div className="flex items-center gap-3"><button type="button" onClick={() => setBpm((value) => Math.max(30, value - 1))} className="h-9 w-9 rounded-lg border border-zinc-700 text-lg hover:bg-zinc-800" aria-label="Decrease BPM">−</button><input type="range" min="30" max="240" value={bpm} onChange={(event) => setBpm(Number(event.target.value))} className="w-28 accent-amber-400 sm:w-40" aria-label="Metronome BPM"/><button type="button" onClick={() => setBpm((value) => Math.min(240, value + 1))} className="h-9 w-9 rounded-lg border border-zinc-700 text-lg hover:bg-zinc-800" aria-label="Increase BPM">+</button><button type="button" onClick={() => setMetronomeOn((value) => !value)} aria-pressed={metronomeOn} className={`rounded-xl px-4 py-2 text-sm font-bold ${metronomeOn ? "bg-amber-400 text-black" : "border border-zinc-700 bg-zinc-950 text-zinc-200"}`}>{metronomeOn ? "Ⅱ Stop" : "▶ Start"}</button></div>
+          <div className="flex w-full justify-center gap-2" aria-label={`Beat ${beat}`}><span className={`h-2.5 w-2.5 rounded-full ${beat === 1 ? "bg-amber-400" : "bg-zinc-700"}`} /><span className={`h-2.5 w-2.5 rounded-full ${beat === 2 ? "bg-amber-400" : "bg-zinc-700"}`} /><span className={`h-2.5 w-2.5 rounded-full ${beat === 3 ? "bg-amber-400" : "bg-zinc-700"}`} /><span className={`h-2.5 w-2.5 rounded-full ${beat === 4 ? "bg-amber-400" : "bg-zinc-700"}`} /></div>
+        </div>
+      </section>
+
       {/* LYRICS */}
 
       <section className="mx-auto max-w-5xl px-4 pb-16">
@@ -932,6 +1005,7 @@ export default function SongViewer({ song }: { song: Song }) {
                 <ChordLyricLine
                   chords={line.chords}
                   lyrics={line.lyrics}
+                  onSelectChord={setSelectedChord}
                 />
               </div>
             );
@@ -945,6 +1019,7 @@ export default function SongViewer({ song }: { song: Song }) {
         {song.title}
         {song.artist ? ` · ${song.artist}` : ""}
       </footer>
+      {selectedChord ? <ChordDiagram chord={selectedChord} onClose={() => setSelectedChord(null)} /> : null}
     </main>
   );
 }
