@@ -486,6 +486,8 @@ export default function SongViewer({ song }: { song: Song }) {
   const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE);
   const [autoScroll, setAutoScroll] = useState(false);
   const [scrollSpeed, setScrollSpeed] = useState(2);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [showPracticeController, setShowPracticeController] = useState(true);
   const [selectedChord, setSelectedChord] = useState<string | null>(null);
   const [capoOffset, setCapoOffset] = useState<number>(Number(song.capo ?? 0));
   const [metronomeOn, setMetronomeOn] = useState(false);
@@ -662,6 +664,32 @@ export default function SongViewer({ song }: { song: Song }) {
         handleVisibility
       );
     };
+  }, []);
+
+  // Keep the floating practice dock in sync with the reader's position.
+  useEffect(() => {
+    let frame = 0;
+    const updateProgress = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+        setScrollProgress(scrollable > 0 ? Math.min(100, Math.max(0, (window.scrollY / scrollable) * 100)) : 0);
+      });
+    };
+    updateProgress();
+    window.addEventListener("scroll", updateProgress, { passive: true });
+    window.addEventListener("resize", updateProgress);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", updateProgress);
+      window.removeEventListener("resize", updateProgress);
+    };
+  }, []);
+
+  const seekScroll = useCallback((value: number) => {
+    const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+    window.scrollTo({ top: (Math.max(0, Math.min(100, value)) / 100) * Math.max(0, scrollable), behavior: "auto" });
+    setScrollProgress(value);
   }, []);
 
   useEffect(() => {
@@ -894,62 +922,6 @@ export default function SongViewer({ song }: { song: Song }) {
         <ChordList chords={displayedChords} onSelect={setSelectedChord} />
       </section>
 
-      {/* AUTO SCROLL */}
-
-      <section className="mx-auto max-w-5xl px-4 pb-8">
-        <div className="rounded-[20px] border border-zinc-800 bg-zinc-900/40 p-4 shadow-[0_20px_70px_rgba(0,0,0,0.12)] sm:p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
-              Auto Scroll
-            </p>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setAutoScroll((value) => !value)}
-                className={`rounded-xl px-4 py-2 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 active:scale-95 ${
-                  autoScroll
-                    ? "bg-amber-400 text-black"
-                    : "border border-zinc-700 bg-zinc-950 text-zinc-200 hover:border-zinc-500"
-                }`}
-                aria-pressed={autoScroll}
-              >
-                {autoScroll ? "Ⅱ Pause" : "▶ Play"}
-              </button>
-
-              <button
-                type="button"
-                onClick={resetScroll}
-                className="rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-2 text-sm font-bold text-zinc-300 transition hover:border-zinc-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 active:scale-95"
-              >
-                ↺ Reset
-              </button>
-
-              <label className="flex items-center gap-2">
-                <span className="text-xs font-medium text-zinc-500">
-                  Speed
-                </span>
-
-                <select
-                  value={scrollSpeed}
-                  onChange={(event) =>
-                    setScrollSpeed(Number(event.target.value))
-                  }
-                  className="rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-zinc-200 outline-none focus:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-400"
-                  aria-label="Auto scroll speed"
-                >
-                  <option value={1}>1 - Slow</option>
-                  <option value={2}>2 - Normal</option>
-                  <option value={3}>3 - Fast</option>
-                  <option value={4}>4 - Faster</option>
-                  <option value={5}>5 - Fastest</option>
-                </select>
-              </label>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* METRONOME */}
       <section className="mx-auto max-w-5xl px-4 pb-5">
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-[20px] border border-zinc-800 bg-zinc-900/40 p-4 sm:p-5">
@@ -963,7 +935,7 @@ export default function SongViewer({ song }: { song: Song }) {
 
       <section className="mx-auto max-w-5xl px-4 pb-16">
         <div
-          className="w-full min-w-0 px-1 py-4 sm:px-4 sm:py-6"
+          className="w-full min-w-0 px-1 py-4 pb-36 sm:px-4 sm:py-6 sm:pb-40"
           style={{ fontSize: `${fontSize}px` }}
         >
           {parsedLines.map((line, index) => {
@@ -1013,9 +985,77 @@ export default function SongViewer({ song }: { song: Song }) {
         </div>
       </section>
 
+      {/* FIXED BOTTOM PRACTICE CONTROLLER — inspired by the reference */}
+      {showPracticeController ? (
+        <div
+          className="fixed inset-x-0 bottom-0 z-[80] border-t border-zinc-200 bg-white text-zinc-900 shadow-[0_-8px_28px_rgba(0,0,0,0.10)] pb-[env(safe-area-inset-bottom)]"
+          role="region"
+          aria-label="Floating song practice controls"
+        >
+          <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+            <button
+              type="button"
+              onClick={() => { stopAutoScroll(); setShowPracticeController(false); }}
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-2xl font-medium text-emerald-700 transition hover:bg-emerald-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
+              aria-label="Sembunyikan kontrol auto-scroll"
+              title="Sembunyikan kontrol"
+            >
+              ×
+            </button>
+
+            <div className="flex h-12 min-w-0 flex-1 items-center justify-center gap-3 rounded-lg bg-emerald-100 px-3 text-emerald-700 sm:max-w-[300px] sm:gap-5">
+              <button
+                type="button"
+                onClick={() => setScrollSpeed((value) => Math.max(1, value - 1))}
+                disabled={scrollSpeed <= 1}
+                className="flex h-9 w-8 shrink-0 items-center justify-center text-2xl font-medium transition hover:text-emerald-950 disabled:opacity-30"
+                aria-label="Perlambat auto-scroll"
+              >
+                −
+              </button>
+              <span className="min-w-[52px] text-center font-mono text-base font-semibold tabular-nums" aria-live="polite">
+                {({ 1: "0.5x", 2: "1.0x", 3: "1.6x", 4: "2.5x", 5: "3.8x" } as Record<number, string>)[scrollSpeed]}
+              </span>
+              <button
+                type="button"
+                onClick={() => setScrollSpeed((value) => Math.min(5, value + 1))}
+                disabled={scrollSpeed >= 5}
+                className="flex h-9 w-8 shrink-0 items-center justify-center text-2xl font-medium transition hover:text-emerald-950 disabled:opacity-30"
+                aria-label="Percepat auto-scroll"
+              >
+                +
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setAutoScroll((value) => !value)}
+              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg text-xl font-black text-white transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${autoScroll ? "bg-emerald-600 hover:bg-emerald-700" : "bg-emerald-600 hover:bg-emerald-700"}`}
+              aria-pressed={autoScroll}
+              aria-label={autoScroll ? "Pause auto-scroll" : "Mulai auto-scroll"}
+              title={autoScroll ? "Pause" : "Play"}
+            >
+              {autoScroll ? "Ⅱ" : "▶"}
+            </button>
+          </div>
+          <div className="h-1 w-full bg-zinc-100" aria-label={`Posisi lagu ${Math.round(scrollProgress)} persen`}>
+            <div className="h-full bg-emerald-600 transition-[width] duration-100" style={{ width: `${scrollProgress}%` }} />
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setShowPracticeController(true)}
+          className="fixed bottom-4 right-4 z-[80] flex h-12 items-center gap-2 rounded-full bg-emerald-600 px-5 text-sm font-bold text-white shadow-xl transition hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
+          style={{ marginBottom: "env(safe-area-inset-bottom)" }}
+        >
+          <span>{autoScroll ? "Ⅱ" : "▶"}</span> Kontrol scroll
+        </button>
+      )}
+
       {/* FOOTER */}
 
-      <footer className="mx-auto max-w-5xl px-4 pb-16 text-center text-xs text-zinc-700">
+      <footer className="mx-auto max-w-5xl px-4 pb-28 text-center text-xs text-zinc-700">
         {song.title}
         {song.artist ? ` · ${song.artist}` : ""}
       </footer>
