@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getPublishedSongs } from "@/lib/songs";
 import { getPublishedBands } from "@/lib/bands";
 import SafeImage from "@/components/SafeImage";
+import HomeQuickActions from "@/components/HomeQuickActions";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -219,23 +220,24 @@ export default async function HomePage() {
             </Link>
           </nav>
 
-          {/* Right */}
-          <div className="flex items-center gap-2">
-            <Link
-              href="/songs"
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-white/60 transition hover:border-amber-400/30 hover:bg-amber-400/10 hover:text-amber-300"
-              aria-label="Search songs"
-            >
-              <SearchIcon className="h-4 w-4" />
-            </Link>
-
-            <button
-              type="button"
-              className="hidden h-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] px-4 text-xs font-semibold text-white/60 transition hover:border-amber-400/30 hover:bg-amber-400/10 hover:text-amber-300 sm:flex"
-            >
-              Appearance
-            </button>
-          </div>
+          {/* Interactive tools: live search, favorites, and random song */}
+          <HomeQuickActions
+            songs={songs.map((song) => ({
+              id: song.id,
+              slug: song.slug,
+              title: song.title,
+              artist: song.artist ?? "",
+              coverImageUrl: song.coverImageUrl ?? "",
+              originalKey: song.originalKey ?? "",
+            }))}
+            bands={bands.map((band) => ({
+              id: band.id,
+              slug: band.slug,
+              name: band.name,
+              genre: band.genre ?? "",
+              coverImageUrl: band.coverImageUrl ?? band.logoUrl ?? "",
+            }))}
+          />
         </div>
       </header>
 
