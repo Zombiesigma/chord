@@ -286,7 +286,7 @@ function ChordProgression({
       {chords.map((item, index) => (
         <span
           key={`${item.chord}-${index}`}
-          className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/[0.055] px-3 font-mono text-sm font-bold text-amber-400"
+          className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl border border-[#FFC400]/20 bg-[#FFC400]/[0.055] px-3 font-mono text-sm font-bold text-[#FFC400]"
         >
           {item.chord}
         </span>
@@ -362,7 +362,7 @@ function ChordLyricLine({
 }) {
   if (!chords.length) {
     return (
-      <div className="w-full whitespace-pre-wrap break-words font-mono leading-[1.8] text-zinc-200">
+      <div className="w-full whitespace-pre-wrap break-words font-mono leading-[1.8] text-[#A1A1AA]">
         {lyrics || "\u00A0"}
       </div>
     );
@@ -383,7 +383,7 @@ function ChordLyricLine({
                 type="button"
                 onClick={() => onSelectChord?.(segment.chord)}
                 title={`Lihat diagram ${segment.chord}`}
-                className="mb-0.5 block w-fit whitespace-nowrap font-mono text-[0.85em] font-bold leading-[1.3] text-amber-400 hover:text-amber-300 focus-visible:outline-none focus-visible:underline"
+                className="mb-0.5 block w-fit whitespace-nowrap font-mono text-[0.85em] font-bold leading-[1.3] text-[#FFC400] hover:text-[#E5AD00] focus-visible:outline-none focus-visible:underline"
               >
                 {segment.chord}
               </button>
@@ -396,7 +396,7 @@ function ChordLyricLine({
               </span>
             )}
 
-            <span className="min-w-0 whitespace-pre-wrap break-words text-zinc-200">
+            <span className="min-w-0 whitespace-pre-wrap break-words text-[#A1A1AA]">
               {segment.text || "\u00A0"}
             </span>
           </span>
@@ -413,7 +413,7 @@ function ChordLyricLine({
 function SectionHeader({ title }: { title: string }) {
   return (
     <div className="mb-5 mt-10 first:mt-0">
-      <span className="inline-flex max-w-full items-center rounded-xl border border-amber-400/15 bg-amber-400/[0.055] px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-[0.12em] text-amber-400">
+      <span className="inline-flex max-w-full items-center rounded-xl border border-[#FFC400]/20 bg-[#FFC400]/[0.055] px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-[0.12em] text-[#FFC400]">
         {title}
       </span>
     </div>
@@ -442,10 +442,10 @@ function ChordDiagram({ chord, onClose }: { chord: string; onClose: () => void }
   const shape = OPEN_CHORD_SHAPES[rootChord];
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/75 p-3 backdrop-blur-sm sm:items-center" role="dialog" aria-modal="true" aria-label={`Chord diagram ${chord}`} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <div className="w-full max-w-sm rounded-3xl border border-zinc-700 bg-[#101010] p-5 shadow-2xl">
+      <div className="w-full max-w-sm rounded-3xl border border-[#333333] bg-[#101010] p-5 shadow-2xl">
         <div className="flex items-center justify-between">
-          <div><p className="text-[10px] font-bold uppercase tracking-[.25em] text-zinc-500">Chord diagram</p><h2 className="mt-1 text-3xl font-black text-amber-400">{chord}</h2></div>
-          <button type="button" onClick={onClose} className="rounded-xl border border-zinc-700 px-3 py-2 text-zinc-300 hover:bg-zinc-800" aria-label="Close chord diagram">✕</button>
+          <div><p className="text-[10px] font-bold uppercase tracking-[.25em] text-[#737373]">Chord diagram</p><h2 className="mt-1 text-3xl font-black text-[#FFC400]">{chord}</h2></div>
+          <button type="button" onClick={onClose} className="rounded-xl border border-[#333333] px-3 py-2 text-[#A1A1AA] hover:bg-[#202020]" aria-label="Close chord diagram">✕</button>
         </div>
         {shape ? (
           <div className="mt-5">
@@ -456,11 +456,11 @@ function ChordDiagram({ chord, onClose }: { chord: string; onClose: () => void }
                 {fret < 0 ? <text x={42 + i * 31} y="23" textAnchor="middle" fontSize="17" fill="#fbbf24">×</text> : fret === 0 ? <circle cx={42 + i * 31} cy="20" r="6" fill="none" stroke="#fbbf24" strokeWidth="2" /> : <circle cx={42 + i * 31} cy={36 + (fret - 0.5) * 30} r="8" fill="#fbbf24" />}
               </g>)}
             </svg>
-            <p className="mt-2 text-center font-mono text-sm tracking-[.25em] text-zinc-400">{shape.label}</p>
-            <p className="mt-3 text-center text-xs text-zinc-500">Diagram chord dasar. Untuk variasi/barre chord, cek fingering sesuai versi lagu.</p>
+            <p className="mt-2 text-center font-mono text-sm tracking-[.25em] text-[#A1A1AA]">{shape.label}</p>
+            <p className="mt-3 text-center text-xs text-[#737373]">Diagram chord dasar. Untuk variasi/barre chord, cek fingering sesuai versi lagu.</p>
           </div>
         ) : (
-          <div className="mt-5 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5"><p className="font-medium text-zinc-200">Bentuk chord ini belum tersedia sebagai diagram otomatis.</p><p className="mt-2 text-sm text-zinc-500">Coba chord dasar seperti C, D, E, G, A, Am, Dm, Em, F, atau Bm.</p></div>
+          <div className="mt-5 rounded-2xl border border-[#202020] bg-[#171717] p-5"><p className="font-medium text-[#A1A1AA]">Bentuk chord ini belum tersedia sebagai diagram otomatis.</p><p className="mt-2 text-sm text-[#737373]">Coba chord dasar seperti C, D, E, G, A, Am, Dm, Em, F, atau Bm.</p></div>
         )}
       </div>
     </div>
@@ -470,9 +470,9 @@ function ChordDiagram({ chord, onClose }: { chord: string; onClose: () => void }
 function ChordList({ chords, onSelect }: { chords: string[]; onSelect: (chord: string) => void }) {
   if (!chords.length) return null;
   return (
-    <section className="mb-8 border-b border-zinc-900 pb-7">
-      <div className="mb-4"><p className="text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Chords</p><p className="mt-1 text-xs text-zinc-600">{chords.length} {chords.length === 1 ? "chord" : "chords"} · tap chord untuk lihat diagram</p></div>
-      <div className="flex max-w-full flex-wrap gap-2">{chords.map((chord, index) => <button type="button" key={`${chord}-${index}`} onClick={() => onSelect(chord)} className="rounded-xl border border-amber-400/10 bg-zinc-900/60 px-3.5 py-2 font-mono text-sm font-bold text-amber-400 transition hover:border-amber-400/50 hover:bg-amber-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">{chord}</button>)}</div>
+    <section className="mb-8 border-b border-[#202020] pb-7">
+      <div className="mb-4"><p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#737373]">Chords</p><p className="mt-1 text-xs text-[#7B817F]">{chords.length} {chords.length === 1 ? "chord" : "chords"} · tap chord untuk lihat diagram</p></div>
+      <div className="flex max-w-full flex-wrap gap-2">{chords.map((chord, index) => <button type="button" key={`${chord}-${index}`} onClick={() => onSelect(chord)} className="rounded-xl border border-[#FFC400]/20 bg-[#171717] px-3.5 py-2 font-mono text-sm font-bold text-[#FFC400] transition hover:border-[#FFC400]/60 hover:bg-[#FFC400]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC400]">{chord}</button>)}</div>
     </section>
   );
 }
@@ -747,14 +747,14 @@ export default function SongViewer({ song }: { song: Song }) {
   ------------------------------------------------------- */
 
   return (
-    <main className="min-h-screen w-full overflow-x-clip bg-[#050505] text-zinc-100">
+    <main className="min-h-screen w-full overflow-x-clip bg-[#050505] text-[#F5F5F5]">
       {/* STICKY NAVIGATION */}
 
-      <header className="sticky top-0 z-50 w-full border-b border-zinc-800/80 bg-[#050505]/95 backdrop-blur-2xl">
+      <header className="sticky top-0 z-50 w-full border-b border-[#202020]/80 bg-[#050505]/95 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-2 px-4 py-3">
           <Link
             href="/songs"
-            className="shrink-0 rounded-lg py-2 text-sm font-medium text-zinc-400 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            className="shrink-0 rounded-lg py-2 text-sm font-medium text-[#A1A1AA] transition hover:text-[#F5F5F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC400]"
           >
             ← Songs
           </Link>
@@ -763,13 +763,13 @@ export default function SongViewer({ song }: { song: Song }) {
             {/* TRANSPOSE */}
 
             <div
-              className="flex items-center gap-1 rounded-xl border border-zinc-800 bg-zinc-950 p-1"
+              className="flex items-center gap-1 rounded-xl border border-[#202020] bg-[#111111] p-1"
               aria-label="Transpose controls"
             >
               <button
                 type="button"
                 onClick={() => setShift((value) => Math.max(-12, value - 1))}
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-lg text-zinc-300 transition hover:bg-zinc-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 active:scale-95"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-lg text-[#A1A1AA] transition hover:bg-[#202020] hover:text-[#F5F5F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC400] active:scale-95"
                 aria-label="Transpose down one semitone"
               >
                 −
@@ -778,7 +778,7 @@ export default function SongViewer({ song }: { song: Song }) {
               <button
                 type="button"
                 onClick={resetTranspose}
-                className="flex min-w-10 items-center justify-center rounded-lg px-1 font-mono text-xs font-bold text-zinc-400 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                className="flex min-w-10 items-center justify-center rounded-lg px-1 font-mono text-xs font-bold text-[#A1A1AA] transition hover:text-[#F5F5F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC400]"
                 title="Reset transpose"
                 aria-label={`Transpose ${shift} semitones. Reset`}
               >
@@ -788,7 +788,7 @@ export default function SongViewer({ song }: { song: Song }) {
               <button
                 type="button"
                 onClick={() => setShift((value) => Math.min(12, value + 1))}
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-lg text-zinc-300 transition hover:bg-zinc-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 active:scale-95"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-lg text-[#A1A1AA] transition hover:bg-[#202020] hover:text-[#F5F5F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC400] active:scale-95"
                 aria-label="Transpose up one semitone"
               >
                 +
@@ -798,21 +798,21 @@ export default function SongViewer({ song }: { song: Song }) {
             {/* FONT SIZE */}
 
             <div
-              className="flex items-center gap-1 rounded-xl border border-zinc-800 bg-zinc-950 p-1"
+              className="flex items-center gap-1 rounded-xl border border-[#202020] bg-[#111111] p-1"
               aria-label="Font size controls"
             >
               <button
                 type="button"
                 onClick={decreaseFont}
                 disabled={fontSize <= MIN_FONT_SIZE}
-                className="flex h-9 min-w-9 items-center justify-center rounded-lg px-2 text-sm font-bold text-zinc-300 transition hover:bg-zinc-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-9 min-w-9 items-center justify-center rounded-lg px-2 text-sm font-bold text-[#A1A1AA] transition hover:bg-[#202020] hover:text-[#F5F5F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC400] disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Decrease text size"
               >
                 A−
               </button>
 
               <span
-                className="flex min-w-7 justify-center font-mono text-xs font-bold text-zinc-500"
+                className="flex min-w-7 justify-center font-mono text-xs font-bold text-[#737373]"
                 aria-live="polite"
                 aria-label={`Font size ${fontSize} pixels`}
               >
@@ -823,7 +823,7 @@ export default function SongViewer({ song }: { song: Song }) {
                 type="button"
                 onClick={increaseFont}
                 disabled={fontSize >= MAX_FONT_SIZE}
-                className="flex h-9 min-w-9 items-center justify-center rounded-lg px-2 text-sm font-bold text-zinc-300 transition hover:bg-zinc-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-9 min-w-9 items-center justify-center rounded-lg px-2 text-sm font-bold text-[#A1A1AA] transition hover:bg-[#202020] hover:text-[#F5F5F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC400] disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Increase text size"
               >
                 A+
@@ -837,7 +837,7 @@ export default function SongViewer({ song }: { song: Song }) {
 
       <section className="mx-auto max-w-5xl px-4 pb-9 pt-8 sm:pb-10 sm:pt-12">
         <div className="grid gap-6 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-end">
-          <div className="mx-auto aspect-square w-full max-w-[220px] overflow-hidden rounded-[26px] bg-zinc-900 shadow-[0_30px_100px_rgba(0,0,0,0.45)] sm:mx-0 sm:max-w-none">
+          <div className="mx-auto aspect-square w-full max-w-[220px] overflow-hidden rounded-[26px] bg-[#202020] shadow-[0_30px_100px_rgba(0,0,0,0.45)] sm:mx-0 sm:max-w-none">
             {song.coverImageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -848,42 +848,42 @@ export default function SongViewer({ song }: { song: Song }) {
                 className="h-full w-full object-cover"
               />
             ) : (
-              <div className="flex h-full items-center justify-center text-xs font-bold tracking-[0.2em] text-zinc-700">
+              <div className="flex h-full items-center justify-center text-xs font-bold tracking-[0.2em] text-[#7B817F]">
                 NO COVER
               </div>
             )}
           </div>
 
           <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-[0.28em] text-zinc-500">
+            <p className="text-xs font-medium uppercase tracking-[0.28em] text-[#737373]">
               {song.genre || "Song"}
             </p>
 
-            <h1 className="mt-2 break-words text-4xl font-black tracking-[-0.045em] text-white sm:text-6xl">
+            <h1 className="mt-2 break-words text-4xl font-black tracking-[-0.045em] text-[#F5F5F5] sm:text-6xl">
               {song.title}
             </h1>
 
-            <p className="mt-2 break-words text-lg font-medium text-zinc-400">
+            <p className="mt-2 break-words text-lg font-medium text-[#A1A1AA]">
               {song.artist || "Unknown artist"}
             </p>
 
             <div className="mt-5 flex max-w-full flex-wrap gap-2">
               {displayedKey && (
-                <span className="rounded-full bg-zinc-900 px-3 py-2 text-xs text-zinc-400">
+                <span className="rounded-full bg-[#202020] px-3 py-2 text-xs text-[#A1A1AA]">
                   Key {displayedKey}
                 </span>
               )}
 
-              <label className="flex items-center gap-2 rounded-full bg-zinc-900 px-3 py-2 text-xs text-zinc-400">Capo <select value={capoOffset} onChange={(event) => setCapoOffset(Number(event.target.value))} className="bg-transparent font-bold text-zinc-200 outline-none" aria-label="Capo position" title="Atur posisi capo untuk sesi latihan ini">{Array.from({ length: 13 }, (_, index) => <option key={index} value={index} className="bg-zinc-900">{index}</option>)}</select></label>
+              <label className="flex items-center gap-2 rounded-full bg-[#202020] px-3 py-2 text-xs text-[#A1A1AA]">Capo <select value={capoOffset} onChange={(event) => setCapoOffset(Number(event.target.value))} className="bg-transparent font-bold text-[#A1A1AA] outline-none" aria-label="Capo position" title="Atur posisi capo untuk sesi latihan ini">{Array.from({ length: 13 }, (_, index) => <option key={index} value={index} className="bg-[#202020]">{index}</option>)}</select></label>
 
               {song.bpm ? (
-                <span className="rounded-full bg-zinc-900 px-3 py-2 text-xs text-zinc-400">
+                <span className="rounded-full bg-[#202020] px-3 py-2 text-xs text-[#A1A1AA]">
                   {song.bpm} BPM
                 </span>
               ) : null}
 
               {song.tuning ? (
-                <span className="max-w-full break-words rounded-full bg-zinc-900 px-3 py-2 text-xs text-zinc-400">
+                <span className="max-w-full break-words rounded-full bg-[#202020] px-3 py-2 text-xs text-[#A1A1AA]">
                   {song.tuning}
                 </span>
               ) : null}
@@ -895,7 +895,7 @@ export default function SongViewer({ song }: { song: Song }) {
                   href={song.youtubeUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-black transition hover:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 active:scale-95"
+                  className="rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-black transition hover:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC400] active:scale-95"
                 >
                   YouTube ↗
                 </a>
@@ -906,7 +906,7 @@ export default function SongViewer({ song }: { song: Song }) {
                   href={song.spotifyTrackUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-2.5 text-sm font-bold text-zinc-200 transition hover:border-zinc-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 active:scale-95"
+                  className="rounded-xl border border-[#202020] bg-[#111111] px-4 py-2.5 text-sm font-bold text-[#A1A1AA] transition hover:border-[#FFC400] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC400] active:scale-95"
                 >
                   Spotify ↗
                 </a>
@@ -924,10 +924,10 @@ export default function SongViewer({ song }: { song: Song }) {
 
       {/* METRONOME */}
       <section className="mx-auto max-w-5xl px-4 pb-5">
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-[20px] border border-zinc-800 bg-zinc-900/40 p-4 sm:p-5">
-          <div><p className="text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Metronome</p><p className="mt-1 text-sm text-zinc-300">Practice tempo · {bpm} BPM</p></div>
-          <div className="flex items-center gap-3"><button type="button" onClick={() => setBpm((value) => Math.max(30, value - 1))} className="h-9 w-9 rounded-lg border border-zinc-700 text-lg hover:bg-zinc-800" aria-label="Decrease BPM">−</button><input type="range" min="30" max="240" value={bpm} onChange={(event) => setBpm(Number(event.target.value))} className="w-28 accent-amber-400 sm:w-40" aria-label="Metronome BPM"/><button type="button" onClick={() => setBpm((value) => Math.min(240, value + 1))} className="h-9 w-9 rounded-lg border border-zinc-700 text-lg hover:bg-zinc-800" aria-label="Increase BPM">+</button><button type="button" onClick={() => setMetronomeOn((value) => !value)} aria-pressed={metronomeOn} className={`rounded-xl px-4 py-2 text-sm font-bold ${metronomeOn ? "bg-amber-400 text-black" : "border border-zinc-700 bg-zinc-950 text-zinc-200"}`}>{metronomeOn ? "Ⅱ Stop" : "▶ Start"}</button></div>
-          <div className="flex w-full justify-center gap-2" aria-label={`Beat ${beat}`}><span className={`h-2.5 w-2.5 rounded-full ${beat === 1 ? "bg-amber-400" : "bg-zinc-700"}`} /><span className={`h-2.5 w-2.5 rounded-full ${beat === 2 ? "bg-amber-400" : "bg-zinc-700"}`} /><span className={`h-2.5 w-2.5 rounded-full ${beat === 3 ? "bg-amber-400" : "bg-zinc-700"}`} /><span className={`h-2.5 w-2.5 rounded-full ${beat === 4 ? "bg-amber-400" : "bg-zinc-700"}`} /></div>
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-[20px] border border-[#202020] bg-[#171717] p-4 sm:p-5">
+          <div><p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#737373]">Metronome</p><p className="mt-1 text-sm text-[#A1A1AA]">Practice tempo · {bpm} BPM</p></div>
+          <div className="flex items-center gap-3"><button type="button" onClick={() => setBpm((value) => Math.max(30, value - 1))} className="h-9 w-9 rounded-lg border border-[#333333] text-lg hover:bg-[#202020]" aria-label="Decrease BPM">−</button><input type="range" min="30" max="240" value={bpm} onChange={(event) => setBpm(Number(event.target.value))} className="w-28 accent-[#FFC400] sm:w-40" aria-label="Metronome BPM"/><button type="button" onClick={() => setBpm((value) => Math.min(240, value + 1))} className="h-9 w-9 rounded-lg border border-[#333333] text-lg hover:bg-[#202020]" aria-label="Increase BPM">+</button><button type="button" onClick={() => setMetronomeOn((value) => !value)} aria-pressed={metronomeOn} className={`rounded-xl px-4 py-2 text-sm font-bold ${metronomeOn ? "bg-[#FFC400] text-black" : "border border-[#333333] bg-[#111111] text-[#A1A1AA]"}`}>{metronomeOn ? "Ⅱ Stop" : "▶ Start"}</button></div>
+          <div className="flex w-full justify-center gap-2" aria-label={`Beat ${beat}`}><span className={`h-2.5 w-2.5 rounded-full ${beat === 1 ? "bg-[#FFC400]" : "bg-[#333333]"}`} /><span className={`h-2.5 w-2.5 rounded-full ${beat === 2 ? "bg-[#FFC400]" : "bg-[#333333]"}`} /><span className={`h-2.5 w-2.5 rounded-full ${beat === 3 ? "bg-[#FFC400]" : "bg-[#333333]"}`} /><span className={`h-2.5 w-2.5 rounded-full ${beat === 4 ? "bg-[#FFC400]" : "bg-[#333333]"}`} /></div>
         </div>
       </section>
 
@@ -985,77 +985,31 @@ export default function SongViewer({ song }: { song: Song }) {
         </div>
       </section>
 
-      {/* FIXED BOTTOM PRACTICE CONTROLLER — inspired by the reference */}
+      {/* FIXED BOTTOM PRACTICE CONTROLLER — cream/blue app theme */}
       {showPracticeController ? (
         <div
-          className="fixed inset-x-0 bottom-0 z-[80] border-t border-zinc-200 bg-white text-zinc-900 shadow-[0_-8px_28px_rgba(0,0,0,0.10)] pb-[env(safe-area-inset-bottom)]"
+          className="fixed inset-x-0 bottom-0 z-[80] border-t border-[#292929] bg-[#050505]/[0.97] text-[#F5F5F5] shadow-[0_-10px_35px_rgba(0,0,0,0.45)] backdrop-blur-xl pb-[env(safe-area-inset-bottom)]"
           role="region"
           aria-label="Floating song practice controls"
         >
-          <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-            <button
-              type="button"
-              onClick={() => { stopAutoScroll(); setShowPracticeController(false); }}
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-2xl font-medium text-emerald-700 transition hover:bg-emerald-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
-              aria-label="Sembunyikan kontrol auto-scroll"
-              title="Sembunyikan kontrol"
-            >
-              ×
-            </button>
-
-            <div className="flex h-12 min-w-0 flex-1 items-center justify-center gap-3 rounded-lg bg-emerald-100 px-3 text-emerald-700 sm:max-w-[300px] sm:gap-5">
-              <button
-                type="button"
-                onClick={() => setScrollSpeed((value) => Math.max(1, value - 1))}
-                disabled={scrollSpeed <= 1}
-                className="flex h-9 w-8 shrink-0 items-center justify-center text-2xl font-medium transition hover:text-emerald-950 disabled:opacity-30"
-                aria-label="Perlambat auto-scroll"
-              >
-                −
-              </button>
-              <span className="min-w-[52px] text-center font-mono text-base font-semibold tabular-nums" aria-live="polite">
-                {({ 1: "0.5x", 2: "1.0x", 3: "1.6x", 4: "2.5x", 5: "3.8x" } as Record<number, string>)[scrollSpeed]}
-              </span>
-              <button
-                type="button"
-                onClick={() => setScrollSpeed((value) => Math.min(5, value + 1))}
-                disabled={scrollSpeed >= 5}
-                className="flex h-9 w-8 shrink-0 items-center justify-center text-2xl font-medium transition hover:text-emerald-950 disabled:opacity-30"
-                aria-label="Percepat auto-scroll"
-              >
-                +
-              </button>
+          <div className="mx-auto flex w-full max-w-4xl items-center gap-3 px-4 py-3 sm:px-6 sm:py-3.5">
+            <button type="button" onClick={() => { stopAutoScroll(); setShowPracticeController(false); }} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#292929] bg-[#202020] text-2xl text-[#A1A1AA] transition hover:border-[#FFC400]/40 hover:bg-[#2A2A2A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC400]" aria-label="Sembunyikan kontrol auto-scroll" title="Sembunyikan kontrol">×</button>
+            <div className="flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-2xl border border-[#FFC400]/15 bg-[#241D08] px-2 text-[#E5AD00] sm:max-w-[320px] sm:gap-5 sm:px-4">
+              <button type="button" onClick={() => setScrollSpeed((value) => Math.max(1, value - 1))} disabled={scrollSpeed <= 1} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-2xl font-medium transition hover:bg-white/70 disabled:opacity-30" aria-label="Perlambat auto-scroll">−</button>
+              <div className="min-w-[58px] text-center"><span className="block font-mono text-base font-bold tabular-nums" aria-live="polite">{({ 1: "0.5x", 2: "1.0x", 3: "1.6x", 4: "2.5x", 5: "3.8x" } as Record<number, string>)[scrollSpeed]}</span><span className="block text-[9px] font-semibold uppercase tracking-[0.16em] text-[#5D7898]">Speed</span></div>
+              <button type="button" onClick={() => setScrollSpeed((value) => Math.min(5, value + 1))} disabled={scrollSpeed >= 5} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-2xl font-medium transition hover:bg-white/70 disabled:opacity-30" aria-label="Percepat auto-scroll">+</button>
             </div>
-
-            <button
-              type="button"
-              onClick={() => setAutoScroll((value) => !value)}
-              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg text-xl font-black text-white transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${autoScroll ? "bg-emerald-600 hover:bg-emerald-700" : "bg-emerald-600 hover:bg-emerald-700"}`}
-              aria-pressed={autoScroll}
-              aria-label={autoScroll ? "Pause auto-scroll" : "Mulai auto-scroll"}
-              title={autoScroll ? "Pause" : "Play"}
-            >
-              {autoScroll ? "Ⅱ" : "▶"}
-            </button>
+            <button type="button" onClick={() => setAutoScroll((value) => !value)} className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-lg font-black text-black shadow-md shadow-[#FFC400]/20 transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC400] ${autoScroll ? "bg-[#D49F00] hover:bg-[#B88900]" : "bg-[#FFC400] hover:bg-[#E5AD00]"}`} aria-pressed={autoScroll} aria-label={autoScroll ? "Pause auto-scroll" : "Mulai auto-scroll"} title={autoScroll ? "Pause" : "Play"}>{autoScroll ? "Ⅱ" : "▶"}</button>
           </div>
-          <div className="h-1 w-full bg-zinc-100" aria-label={`Posisi lagu ${Math.round(scrollProgress)} persen`}>
-            <div className="h-full bg-emerald-600 transition-[width] duration-100" style={{ width: `${scrollProgress}%` }} />
-          </div>
+          <div className="h-1 w-full bg-[#202020]" aria-label={`Posisi lagu ${Math.round(scrollProgress)} persen`}><div className="h-full bg-[#FFC400] transition-[width] duration-100" style={{ width: `${scrollProgress}%` }} /></div>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => setShowPracticeController(true)}
-          className="fixed bottom-4 right-4 z-[80] flex h-12 items-center gap-2 rounded-full bg-emerald-600 px-5 text-sm font-bold text-white shadow-xl transition hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
-          style={{ marginBottom: "env(safe-area-inset-bottom)" }}
-        >
-          <span>{autoScroll ? "Ⅱ" : "▶"}</span> Kontrol scroll
-        </button>
+        <button type="button" onClick={() => setShowPracticeController(true)} className="fixed bottom-4 right-4 z-[80] flex h-12 items-center gap-2 rounded-2xl border border-white/20 bg-[#FFC400] px-5 text-sm font-bold text-black shadow-lg shadow-[#FFC400]/20 transition hover:bg-[#E5AD00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC400]" style={{ marginBottom: "env(safe-area-inset-bottom)" }}><span>{autoScroll ? "Ⅱ" : "▶"}</span> Kontrol scroll</button>
       )}
 
       {/* FOOTER */}
 
-      <footer className="mx-auto max-w-5xl px-4 pb-28 text-center text-xs text-zinc-700">
+      <footer className="mx-auto max-w-5xl px-4 pb-28 text-center text-xs text-[#7B817F]">
         {song.title}
         {song.artist ? ` · ${song.artist}` : ""}
       </footer>
