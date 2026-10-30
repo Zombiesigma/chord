@@ -52,7 +52,7 @@ export default function AdminControlCenter() {
     try {
       if (action === "delete") { if (!window.confirm(`Hapus permanen ${titleOf(row)}? Tindakan ini tidak dapat dibatalkan.`)) return; await deleteDoc(doc(db, col, row.id)); }
       else {
-        const patch: Row = { updatedAt: serverTimestamp(), adminUpdatedBy: user.uid };
+        const patch: Record<string, any> = { updatedAt: serverTimestamp(), adminUpdatedBy: user.uid };
         if (action === "publish" || action === "approve") { patch.isPublished = true; patch.status = action === "approve" && col === "bandApplications" ? "approved" : "published"; }
         if (action === "draft") { patch.isPublished = false; patch.status = "draft"; }
         if (action === "reject") { patch.isPublished = false; patch.status = "rejected"; patch.reviewNote = window.prompt("Alasan penolakan (wajib):")?.trim() || ""; if (!patch.reviewNote) { setError("Penolakan dibatalkan karena alasan kosong."); return; } }
